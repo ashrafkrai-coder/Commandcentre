@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#060b12">
+<meta name="description" content="Pusat kawalan operasi sekolah">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Command Centre">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<script src="config.js"></script><title>Command Centre SMKTM</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* Layout: HUD bilik kawalan — jalur status di atas, baris KPI, grid 2 lajur (tugasan | Telegram, PWA | jadual), ticker pengumuman di bawah */
+:root{
+  color-scheme: dark;
+  --bg:#060b12; --bg2:#08111b; --panel:#0b1622; --panel2:#0e1c2b;
+  --line:#163650; --line2:#1f4a6b;
+  --fg:#d8e7f3; --dim:#7590a6; --faint:#3d566b;
+  --ice:#5fd4ff; --ice-soft:rgba(95,212,255,.12);
+  --ok:#3ddc97; --warn:#ffb547; --crit:#ff4d5e; --info:#8f9cff;
+  --ok-soft:rgba(61,220,151,.13); --warn-soft:rgba(255,181,71,.14); --crit-soft:rgba(255,77,94,.15); --info-soft:rgba(143,156,255,.14);
+  --f-display:"Chakra Petch", "Bahnschrift", "Segoe UI", sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", "Consolas", ui-monospace, monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{min-height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--fg); font:14px/1.45 var(--f-body);
+  background-image:
+    linear-gradient(var(--bg2) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg2) 1px, transparent 1px);
+  background-size:32px 32px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:16px 64px;
+}
+body::after{ /* garisan imbasan halus */
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:50;
+  background:repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 3px);
+}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ice); outline-offset:2px}
+.mono{font-family:var(--f-mono); font-variant-numeric:tabular-nums}
+
+/* ---------- Header ---------- */
+.top{display:flex; flex-wrap:wrap; gap:16px 24px; align-items:center; justify-content:space-between; padding-bottom:14px; border-bottom:1px solid var(--line); margin-bottom:16px}
+.brand{display:flex; align-items:center; gap:14px; min-width:0}
+.pulse{width:12px; height:12px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 0 var(--ok); animation:pulse 2s infinite; flex:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(61,220,151,.6)}70%{box-shadow:0 0 0 10px rgba(61,220,151,0)}100%{box-shadow:0 0 0 0 rgba(61,220,151,0)}}
+.eyebrow{font:500 11px/1 var(--f-mono); letter-spacing:.18em; text-transform:uppercase; color:var(--dim)}
+h1{margin:4px 0 0; font:700 26px/1 var(--f-display); letter-spacing:.08em; color:var(--fg)}
+h1 span{color:var(--ice)}
+.school{font:600 12px/1 var(--f-mono); letter-spacing:.12em; color:var(--ice); border:1px solid var(--line2); padding:6px 9px; text-transform:uppercase}
+.meta{display:flex; flex-wrap:wrap; align-items:center; gap:14px 22px}
+.clock #clock{font:700 28px/1 var(--f-mono); color:var(--ice); letter-spacing:.04em}
+.clock #date{font:500 11px/1 var(--f-mono); color:var(--dim); letter-spacing:.14em; text-transform:uppercase; margin-top:5px}
+.sys{display:grid; grid-template-columns:auto auto; gap:3px 10px; font:500 11px/1.3 var(--f-mono); color:var(--dim); letter-spacing:.06em}
+.sys b{color:var(--fg); font-weight:700}
+.sys .ok{color:var(--ok)} .sys .demo{color:var(--warn)}
+.btn{background:var(--panel2); border:1px solid var(--line2); padding:9px 14px; font:600 12px/1 var(--f-display); letter-spacing:.12em; text-transform:uppercase; cursor:pointer}
+.btn:hover{border-color:var(--ice); color:var(--ice)}
+
+.alert{border:1px solid var(--crit); background:var(--crit-soft); color:var(--fg); padding:10px 14px; margin-bottom:16px; font:500 12.5px/1.4 var(--f-mono)}
+.alert b{color:var(--crit)}
+.sys .live-ok{color:var(--ok)}
+.d-na{display:none !important}
+.gate{position:fixed; inset:0; z-index:60; display:grid; place-items:center; background:rgba(6,11,18,.92); padding:16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px))}
+.gate-box{width:100%; max-width:380px; display:flex; flex-direction:column; gap:10px; background:var(--panel); border:1px solid var(--line2); padding:22px}
+.gate-box h2{font-size:18px}
+.gate-box p{margin:0; color:var(--dim); font-size:13px}
+.gate-box input{background:var(--bg); border:1px solid var(--line2); color:var(--fg); padding:11px 12px; font:500 15px/1 var(--f-mono)}
+.gate-box input:focus{border-color:var(--ice); outline:none}
+.gate-err{color:var(--crit) !important; font-family:var(--f-mono)}
+
+/* ---------- KPI ---------- */
+.kpis{display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:12px; margin-bottom:16px}
+.kpi{position:relative; background:var(--panel); border:1px solid var(--line); padding:12px 14px 13px; overflow:hidden}
+.kpi::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--k, var(--ice))}
+.kpi .lbl{font:500 10.5px/1.2 var(--f-mono); letter-spacing:.16em; text-transform:uppercase; color:var(--dim)}
+.kpi .val{font:700 34px/1.05 var(--f-display); margin-top:6px; color:var(--fg); font-variant-numeric:tabular-nums}
+.kpi .sub{font:400 11.5px/1.3 var(--f-mono); color:var(--dim); margin-top:3px}
+.kpi.crit{--k:var(--crit); background:linear-gradient(180deg, var(--crit-soft), var(--panel) 70%)}
+.kpi.crit .val{color:var(--crit)}
+.kpi.crit.alarm{animation:alarm 1.6s ease-in-out infinite}
+@keyframes alarm{50%{border-color:var(--crit)}}
+.kpi.warn{--k:var(--warn)} .kpi.warn .val{color:var(--warn)}
+.kpi.ok{--k:var(--ok)} .kpi.info{--k:var(--info)}
+.kpi .bump{animation:bump .6s ease-out}
+@keyframes bump{0%{color:var(--ice); transform:translateY(-3px)}100%{transform:none}}
+
+/* ---------- Grid & panel ---------- */
+.grid{display:grid; grid-template-columns:minmax(0,1.65fr) minmax(0,1fr); gap:16px}
+.panel{position:relative; background:var(--panel); border:1px solid var(--line); min-width:0; display:flex; flex-direction:column}
+.panel::before,.panel::after{content:""; position:absolute; width:12px; height:12px; border-color:var(--ice); border-style:solid; pointer-events:none}
+.panel::before{top:-1px; left:-1px; border-width:2px 0 0 2px}
+.panel::after{bottom:-1px; right:-1px; border-width:0 2px 2px 0}
+.ph{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line)}
+h2{margin:0; font:600 15px/1 var(--f-display); letter-spacing:.14em; text-transform:uppercase}
+h2 small{font:500 11px/1 var(--f-mono); letter-spacing:.08em; color:var(--dim); margin-left:8px; text-transform:none}
+.pf{margin-top:auto; padding:8px 14px; border-top:1px dashed var(--line); font:400 11px/1.4 var(--f-mono); color:var(--faint)}
+.pf b{color:var(--dim); font-weight:500}
+
+/* chips */
+.chips{display:flex; flex-wrap:wrap; gap:6px}
+.chip{background:transparent; border:1px solid var(--line2); color:var(--dim); padding:5px 9px; font:500 11px/1 var(--f-mono); letter-spacing:.06em; cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ice-soft); border-color:var(--ice); color:var(--ice)}
+.chip .n{opacity:.7; margin-left:4px}
+
+/* ---------- Tugasan ---------- */
+.tablewrap{overflow-x:auto; max-height:430px; overflow-y:auto}
+table{width:100%; border-collapse:collapse; min-width:620px}
+th{position:sticky; top:0; background:var(--panel2); text-align:left; font:500 10.5px/1 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--dim); padding:9px 12px; border-bottom:1px solid var(--line); z-index:1}
+td{padding:10px 12px; border-bottom:1px solid rgba(22,54,80,.6); vertical-align:middle}
+tr.row{border-left:3px solid transparent}
+tr.row td:first-child{border-left:3px solid var(--s, transparent)}
+tr.row:hover td{background:rgba(95,212,255,.035)}
+.tt{font-weight:600; color:var(--fg)}
+.tu{font:400 11px/1.3 var(--f-mono); color:var(--dim); margin-top:2px; letter-spacing:.04em}
+.pic{white-space:nowrap}
+.due{font:500 12px/1.2 var(--f-mono); white-space:nowrap}
+.due small{display:block; color:var(--dim); font-weight:400; font-size:11px; margin-top:2px}
+.prog{display:flex; align-items:center; gap:8px; min-width:110px}
+.bar{flex:1; height:5px; background:var(--line); position:relative; overflow:hidden}
+.bar i{position:absolute; inset:0 auto 0 0; background:var(--s, var(--ice))}
+.prog span{font:500 11px/1 var(--f-mono); color:var(--dim); width:32px; text-align:right}
+.pill{display:inline-block; font:700 10.5px/1 var(--f-mono); letter-spacing:.1em; padding:5px 7px; border:1px solid currentColor; white-space:nowrap}
+.st-lewat{--s:var(--crit)} .st-lewat .pill,.st-lewat .due{color:var(--crit)} .st-lewat .pill{background:var(--crit-soft)}
+.st-hari{--s:var(--warn)} .st-hari .pill,.st-hari .due{color:var(--warn)} .st-hari .pill{background:var(--warn-soft)}
+.st-proses{--s:var(--ice)} .st-proses .pill{color:var(--ice); background:var(--ice-soft)}
+.st-belum{--s:var(--info)} .st-belum .pill{color:var(--info); background:var(--info-soft)}
+.st-selesai{--s:var(--ok)} .st-selesai .pill{color:var(--ok); background:var(--ok-soft)} .st-selesai .tt{color:var(--dim); text-decoration:line-through; text-decoration-color:var(--faint)}
+.empty{padding:28px 14px; text-align:center; color:var(--dim); font-family:var(--f-mono)}
+
+/* ---------- Telegram ---------- */
+.live{font:700 11px/1 var(--f-mono); letter-spacing:.14em; color:var(--crit); display:flex; align-items:center; gap:6px}
+.live::before{content:""; width:8px; height:8px; border-radius:50%; background:var(--crit); animation:blink 1.2s steps(2) infinite}
+@keyframes blink{50%{opacity:.2}}
+.feed{list-style:none; margin:0; padding:0; overflow-y:auto; max-height:430px; flex:1}
+.msg{display:grid; grid-template-columns:auto minmax(0,1fr); gap:2px 10px; padding:10px 14px; border-bottom:1px solid rgba(22,54,80,.6)}
+.msg time{font:500 11.5px/1.5 var(--f-mono); color:var(--ice); grid-row:span 2}
+.msg .who{display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:12px; color:var(--dim)}
+.msg .who b{color:var(--fg); font-weight:600}
+.grp{font:600 10px/1 var(--f-mono); letter-spacing:.08em; padding:3px 6px; text-transform:uppercase; border:1px solid currentColor}
+.g-guru{color:var(--ice)} .g-admin{color:var(--warn)} .g-bot{color:var(--ok)} .g-ibubapa{color:var(--info)}
+.msg p{margin:0; color:var(--fg); overflow-wrap:anywhere}
+.msg.new{animation:incoming 2.4s ease-out}
+@keyframes incoming{0%{background:var(--ice-soft); transform:translateX(-6px)}20%{transform:none}100%{background:transparent}}
+
+/* ---------- PWA ---------- */
+.tiles{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:10px; padding:14px}
+.tile{position:relative; display:flex; flex-direction:column; gap:3px; padding:12px; background:var(--panel2); border:1px solid var(--line); color:var(--fg); text-decoration:none; min-height:96px; transition:border-color .15s, transform .15s}
+.tile:hover{border-color:var(--ice); transform:translateY(-2px)}
+.ico{width:34px; height:34px; display:grid; place-items:center; font:700 13px/1 var(--f-display); letter-spacing:.04em; color:var(--bg); background:var(--ice); margin-bottom:6px}
+.nm{font-weight:600; font-size:13.5px; line-height:1.25}
+.cat{font:400 11px/1.3 var(--f-mono); color:var(--dim)}
+.dot{position:absolute; top:12px; right:12px; display:flex; align-items:center; gap:5px; font:600 9.5px/1 var(--f-mono); letter-spacing:.1em}
+.dot::before{content:""; width:8px; height:8px; border-radius:50%; background:currentColor}
+.d-online{color:var(--ok)} .d-semak{color:var(--warn)} .d-luar{color:var(--crit)}
+.tile.add{border-style:dashed; color:var(--dim); justify-content:center; align-items:center; text-align:center; font:500 12px/1.4 var(--f-mono); cursor:default}
+.tile.add:hover{transform:none; border-color:var(--line2)}
+.tile.add b{display:block; font:700 22px/1 var(--f-display); color:var(--ice); margin-bottom:4px}
+
+/* ---------- Jadual ---------- */
+.tl{list-style:none; margin:0; padding:10px 14px 14px; position:relative}
+.ev{display:grid; grid-template-columns:96px 16px minmax(0,1fr); gap:0 10px; position:relative; padding:7px 0}
+.ev .t{font:500 12px/1.4 var(--f-mono); color:var(--dim); text-align:right}
+.ev .node{position:relative; display:flex; justify-content:center}
+.ev .node::before{content:""; position:absolute; top:0; bottom:-14px; width:1px; background:var(--line2)}
+.ev:last-child .node::before{display:none}
+.ev .node i{position:relative; width:11px; height:11px; margin-top:4px; border:2px solid var(--line2); background:var(--panel); border-radius:50%}
+.ev .a{font-weight:600}
+.ev .l{font:400 11px/1.3 var(--f-mono); color:var(--dim)}
+.ev.past{opacity:.45}
+.ev.past .node i{background:var(--line2)}
+.ev.now .node i{border-color:var(--warn); background:var(--warn); box-shadow:0 0 0 4px var(--warn-soft)}
+.ev.now .t,.ev.now .a{color:var(--warn)}
+.ev.now .nowbar{grid-column:3; height:3px; background:var(--line); margin-top:6px; position:relative}
+.ev.now .nowbar i{position:absolute; inset:0 auto 0 0; background:var(--warn)}
+.ev.next .node i{border-color:var(--ice)}
+.tag{font:700 9.5px/1 var(--f-mono); letter-spacing:.1em; color:var(--bg); background:var(--warn); padding:3px 5px; margin-left:6px; vertical-align:2px}
+
+/* ---------- Ticker ---------- */
+.ticker{position:fixed; left:0; right:0; bottom:0; z-index:40; display:flex; align-items:stretch; background:var(--panel2); border-top:1px solid var(--line2); padding-bottom:env(safe-area-inset-bottom, 0px); padding-left:env(safe-area-inset-left, 0px); padding-right:env(safe-area-inset-right, 0px)}
+.tlabel{flex:none; background:var(--warn); color:var(--bg); font:700 12px/1 var(--f-display); letter-spacing:.14em; padding:12px 14px; display:flex; align-items:center}
+.track{flex:1; overflow:hidden; position:relative; min-width:0}
+.move{display:inline-flex; gap:48px; white-space:nowrap; padding:11px 0; font:500 13px/1.2 var(--f-mono); animation:scroll 60s linear infinite; padding-left:100%}
+.move span::before{content:"◆"; color:var(--warn); margin-right:12px; font-size:10px}
+@keyframes scroll{to{transform:translateX(-100%)}}
+
+/* ---------- Kesan imbasan gaya CSI ---------- */
+body::before{ /* alur imbasan menyapu skrin dari atas ke bawah */
+  content:""; position:fixed; left:0; right:0; top:-140px; height:140px; pointer-events:none; z-index:49;
+  background:linear-gradient(180deg, transparent, rgba(95,212,255,.07) 70%, rgba(95,212,255,.28) 99%, transparent);
+  animation:sapu 9s linear infinite;
+}
+@keyframes sapu{to{transform:translateY(calc(100vh + 140px))}}
+.msg.new p{animation:taip 1.4s steps(36) both; position:relative}   /* teks mesej baru "ditaip" */
+.msg.new p::after{content:"▌"; color:var(--ice); margin-left:2px; animation:blink .6s steps(2) 4}
+@keyframes taip{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.ph h2::after{content:"_"; color:var(--ice); margin-left:4px; animation:blink 1s steps(2) infinite}  /* kursor berkelip pada tajuk panel */
+.live{text-shadow:0 0 8px var(--crit)}
+
+/* ---------- Mod TV ---------- */
+body.tv{font-size:15px}
+body.tv .tablewrap, body.tv .feed{max-height:52vh}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1200px){ .kpis{grid-template-columns:repeat(3, minmax(0,1fr))} }
+@media (max-width:900px){ .grid{grid-template-columns:minmax(0,1fr)} .tablewrap,.feed{max-height:none} }
+@media (max-width:520px){
+  .kpis{grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px}
+  .kpi .val{font-size:28px}
+  h1{font-size:21px}
+  .clock #clock{font-size:22px}
+  .ev{grid-template-columns:76px 16px minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none !important; transition:none !important}
+  .move{padding-left:16px; white-space:normal; flex-wrap:wrap; gap:6px 32px}
+}
+</style>
+</head>
+<body>
+
+
+<header class="top">
+  <div class="brand">
+    <span class="pulse" aria-hidden="true"></span>
+    <div>
+      <div class="eyebrow">Pusat Kawalan Operasi Sekolah</div>
+      <h1>COMMAND <span>CENTRE</span></h1>
+    </div>
+    <span class="school" id="school">SMK Taman Medan</span>
+  </div>
+  <div class="meta">
+    <div class="clock"><div id="clock" class="mono">--:--:--</div><div id="date"></div></div>
+    <div class="sys">
+      <span>SISTEM</span><b class="ok">● AKTIF</b>
+      <span>DATA</span><b class="demo" id="mode">CONTOH</b>
+      <span>SEGAR SEMULA</span><b id="sync" class="mono">30s</b>
+    </div>
+    <button class="btn" id="tvBtn" type="button">Mod TV</button>
+  </div>
+</header>
+
+<div class="alert" id="alert" role="alert" hidden></div>
+<section class="kpis" id="kpis" aria-label="Ringkasan"></section>
+
+<main class="grid">
+  <section class="panel" aria-labelledby="h-tugas">
+    <div class="ph">
+      <h2 id="h-tugas">Papan Tugasan <small id="tcount"></small></h2>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Tugasan</th><th>PIC</th><th>Tarikh Akhir</th><th>Kemajuan</th><th>Status</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="pf">Sumber: <b>Tab "Tugasan"</b> dalam Google Sheet · <span id="upd">data contoh</span></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-tg">
+    <div class="ph"><h2 id="h-tg">Suapan Telegram <small id="tgsrc">demo</small></h2><span class="live">LIVE</span></div>
+    <ol class="feed" id="feed" aria-live="polite"></ol>
+    <div class="pf">Sumber: <b>Bot Telegram → Tab "Telegram"</b> · mesej kumpulan yang ditanda "Papar di Dashboard"</div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-pwa">
+    <div class="ph"><h2 id="h-pwa">Pelancar Aplikasi PWA <small id="pcount"></small></h2></div>
+    <div class="tiles" id="tiles"></div>
+    <div class="pf">Sumber: <b>Tab "PWA"</b> (Nama, Pautan, Kategori, Aktif, Urutan) · semakan status pada Fasa 4</div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-jd">
+    <div class="ph"><h2 id="h-jd">Jadual Hari Ini</h2><small class="mono" style="color:var(--dim)" id="jdate"></small></div>
+    <ol class="tl" id="tl"></ol>
+    <div class="pf">Sumber: <b>Tab "Jadual"</b></div>
+  </section>
+</main>
+
+<div class="gate" id="gate" hidden>
+  <form class="gate-box" id="gateForm" autocomplete="off">
+    <div class="eyebrow">Akses Terhad</div>
+    <h2>Masukkan Kunci Akses</h2>
+    <p>Kunci ini diberi oleh pentadbir sistem. Ia disimpan pada peranti ini, jadi anda hanya perlu memasukkannya sekali.</p>
+    <label for="gateKey" class="eyebrow">Kunci</label>
+    <input id="gateKey" type="password" placeholder="cth: 3f9a…">
+    <p class="gate-err" id="gateErr" hidden></p>
+    <button class="btn" type="submit">Masuk</button>
+  </form>
+</div>
+
+<div class="ticker" role="marquee" aria-label="Pengumuman">
+  <div class="tlabel">PENGUMUMAN</div>
+  <div class="track"><div class="move" id="tick"></div></div>
+</div>
+
+<script>
+/* =========================================================
+   DATA CONTOH — dipakai hanya bila dashboard dibuka di luar
+   Apps Script (pratonton). Dalam Apps Script, data dibaca
+   terus dari Google Sheet melalui getData().
+   akhir = bilangan hari dari hari ini (negatif = sudah lepas)
+   ========================================================= */
+const SAMPLE = {
+  sekolah: "SMK Taman Medan",
+  tugasan: [
+    { tajuk:"Laporan Pentaksiran Bilik Darjah (PBD) T4", pic:"Pn. Aisyah", unit:"Kurikulum", akhir:-2, status:"Dalam Proses", kemajuan:70 },
+    { tajuk:"Kemas kini data murid APDM", pic:"En. Hafiz", unit:"HEM", akhir:-1, status:"Dalam Proses", kemajuan:45 },
+    { tajuk:"Minit Mesyuarat Panitia Sains", pic:"Pn. Lim", unit:"Panitia Sains", akhir:-3, status:"Belum Mula", kemajuan:0 },
+    { tajuk:"Senarai calon Hari Anugerah Cemerlang", pic:"Pn. Rosnah", unit:"Pentadbiran", akhir:0, status:"Dalam Proses", kemajuan:80 },
+    { tajuk:"Jadual bertugas peperiksaan akhir tahun", pic:"En. Kumar", unit:"Peperiksaan", akhir:0, status:"Dalam Proses", kemajuan:60 },
+    { tajuk:"Laporan kehadiran bulanan Oktober", pic:"Cik Nadia", unit:"HEM", akhir:1, status:"Dalam Proses", kemajuan:30 },
+    { tajuk:"Pelan tindakan PdPR cuti sekolah", pic:"En. Zulkifli", unit:"Kurikulum", akhir:3, status:"Belum Mula", kemajuan:0 },
+    { tajuk:"Inventori makmal komputer", pic:"En. Faizal", unit:"ICT", akhir:5, status:"Dalam Proses", kemajuan:55 },
+    { tajuk:"Borang tuntutan kokurikulum", pic:"Pn. Salmah", unit:"Kokurikulum", akhir:7, status:"Belum Mula", kemajuan:0 },
+    { tajuk:"Analisis keputusan PPT Tingkatan 5", pic:"Pn. Aisyah", unit:"Peperiksaan", akhir:-4, status:"Selesai", kemajuan:100 },
+    { tajuk:"Program Bulan Bahasa", pic:"Cik Nadia", unit:"Panitia BM", akhir:-6, status:"Selesai", kemajuan:100 },
+    { tajuk:"Penyelenggaraan WiFi blok B", pic:"En. Faizal", unit:"ICT", akhir:-2, status:"Selesai", kemajuan:100 },
+  ],
+  pwa: [
+    { nama:"e-Kehadiran Murid", pautan:"#", kategori:"HEM", status:"online" },
+    { nama:"Tempahan Bilik", pautan:"#", kategori:"Pentadbiran", status:"online" },
+    { nama:"Rekod PdP", pautan:"#", kategori:"Kurikulum", status:"online" },
+    { nama:"Aduan Kerosakan", pautan:"#", kategori:"Fasiliti", status:"semak" },
+    { nama:"Inventori ICT", pautan:"#", kategori:"ICT", status:"online" },
+    { nama:"Pinjaman Buku", pautan:"#", kategori:"Pusat Sumber", status:"luar" },
+  ],
+  telegram: [
+    { minit:2,  kumpulan:"Guru",    pengirim:"Pn. Rosnah", teks:"Mohon semua guru kelas hantar senarai calon anugerah sebelum 4.00 petang ini." },
+    { minit:9,  kumpulan:"Bot",     pengirim:"Bot Tugasan", teks:"⚠ 3 tugasan melepasi tarikh akhir. Sila semak Papan Tugasan." },
+    { minit:17, kumpulan:"Pentadbir", pengirim:"PK HEM", teks:"Taklimat keselamatan murid dipindahkan ke Dewan Utama, 2.30 petang." },
+    { minit:26, kumpulan:"Guru",    pengirim:"En. Kumar",  teks:"Draf jadual bertugas peperiksaan sudah dimuat naik. Semak nama masing-masing." },
+    { minit:41, kumpulan:"Ibu Bapa", pengirim:"Admin PIBG", teks:"Notis mesyuarat PIBG telah dihantar kepada semua ibu bapa." },
+    { minit:58, kumpulan:"Pentadbir", pengirim:"Pengetua", teks:"Terima kasih semua atas kerjasama Program Bulan Bahasa minggu lepas." },
+  ],
+  jadual: [
+    { mula:"07:15", tamat:"07:40", acara:"Perhimpunan Mingguan", lokasi:"Dataran Sekolah" },
+    { mula:"08:00", tamat:"09:00", acara:"Mesyuarat Panitia Sains", lokasi:"Bilik Mesyuarat 1" },
+    { mula:"10:30", tamat:"11:30", acara:"Lawatan Pegawai PPD", lokasi:"Pejabat Pengetua" },
+    { mula:"14:30", tamat:"15:30", acara:"Taklimat Keselamatan Murid", lokasi:"Dewan Utama" },
+    { mula:"16:00", tamat:"18:00", acara:"Latihan Kokurikulum", lokasi:"Padang" },
+  ],
+  pengumuman: [
+    "Peperiksaan Akhir Tahun bermula Isnin depan — semua guru sila semak jadual bertugas",
+    "Mesyuarat PIBG akan diadakan Sabtu ini, 9.00 pagi di Dewan Utama",
+    "Penghantaran markah PBD ditutup Jumaat ini",
+    "Hari Anugerah Cemerlang: senarai calon perlu dihantar hari ini",
+  ],
+};
+
+/* Mesej demo yang muncul berkala untuk tunjuk suapan langsung */
+const DEMO_POOL = [
+  { kumpulan:"Guru", pengirim:"Cik Nadia", teks:"Laporan kehadiran Oktober hampir siap, akan hantar esok pagi." },
+  { kumpulan:"Bot", pengirim:"Bot Tugasan", teks:"✔ Tugasan \"Penyelenggaraan WiFi blok B\" ditanda SELESAI oleh En. Faizal." },
+  { kumpulan:"Pentadbir", pengirim:"PK Pentadbiran", teks:"Pegawai PPD dijangka tiba 10.30 pagi. Bilik mesyuarat 1 perlu disediakan." },
+  { kumpulan:"Ibu Bapa", pengirim:"Admin PIBG", teks:"Beberapa ibu bapa bertanya tentang tarikh ambil keputusan peperiksaan." },
+  { kumpulan:"Guru", pengirim:"En. Zulkifli", teks:"Siapa ada templat pelan PdPR tahun lepas? Boleh kongsi dalam kumpulan." },
+  { kumpulan:"Bot", pengirim:"Bot Tugasan", teks:"🔔 Peringatan: 2 tugasan perlu diselesaikan hari ini." },
+];
+
+/* ---------- Utiliti ---------- */
+const $ = s => document.querySelector(s);
+const HARI = ["Ahad","Isnin","Selasa","Rabu","Khamis","Jumaat","Sabtu"];
+const BULAN = ["Jan","Feb","Mac","Apr","Mei","Jun","Jul","Ogo","Sep","Okt","Nov","Dis"];
+const pad = n => String(n).padStart(2,"0");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today0 = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const fmtDate = d => `${pad(d.getDate())} ${BULAN[d.getMonth()]}`;
+const hhmm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const toMin = s => { const [h,m] = s.split(":").map(Number); return h*60+m; };
+const store = {
+  get(k,def){ try{ return localStorage.getItem(k) ?? def; }catch(e){ return def; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+};
+
+/* ---------- Keadaan & sumber data ---------- */
+const GAS = typeof google !== "undefined" && google.script && google.script.run;   // dalam Apps Script
+const API_URL = ((window.CC_CONFIG && window.CC_CONFIG.API_URL) || "").trim();     // versi PWA
+const LIVE = !!(GAS || API_URL);
+let memKey = "";
+const getKey = () => store.get("cc-key", "") || memKey;
+const setKey = k => { memKey = k; store.set("cc-key", k); };
+let DATA = null, feed = [], mesejBaru = 0, refreshSec = 30, seenMsg = new Set();
+const parseYMD = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s||""); return m ? new Date(+m[1], +m[2]-1, +m[3]) : null; };
+
+function prepare(d){
+  const T0 = today0();
+  d.tugasan.forEach(t => t.tarikh = typeof t.akhir === "number" ? addDays(T0, t.akhir) : parseYMD(t.akhir));
+  d.pwa.forEach(p => { if (!p.status) p.status = "na"; });
+  return d;
+}
+function setFeed(list){
+  feed = list.map(m => ({...m, raw: m.masa, masa: m.masa ? new Date(m.masa) : new Date(Date.now() - (m.minit||0)*60000)}));
+  const t0 = today0();
+  mesejBaru = feed.filter(m => m.masa >= t0).length;
+}
+function applyData(d, live){
+  DATA = prepare(d); DATA.loaded = true;
+  refreshSec = d.refresh || 30;
+  $("#school").textContent = d.sekolah;
+  $("#mode").textContent = live ? "LANGSUNG (SHEET)" : "CONTOH";
+  $("#mode").className = live ? "live-ok" : "demo";
+  $("#tgsrc").textContent = live ? "dari tab Telegram" : "demo";
+  $("#upd").textContent = live ? `dikemas kini ${hhmm(new Date())}` : "data contoh";
+  $("#alert").hidden = true;
+  const firstLoad = seenMsg.size === 0;
+  const key = m => m.id || (String(m.raw ?? m.masa) + "|" + m.teks);
+  const fresh = new Set(d.telegram.filter(m => !firstLoad && !seenMsg.has(key(m))).map(key));
+  d.telegram.forEach(m => seenMsg.add(key(m)));
+  setFeed(d.telegram);
+  renderAll(); renderFeed(fresh, key); renderPwa(); renderTicker();
+}
+function loadData(){
+  if (!LIVE) return;
+  const key = getKey();
+  if (!key) { askKey(); return; }
+  const fail = err => {
+    const msg = String((err && err.message) || err);
+    if (/unauthorized/i.test(msg)) { setKey(""); askKey("Kunci akses tidak sah. Sila cuba lagi."); return; }
+    if (!DATA || !DATA.loaded) { const c = store.get("cc-last", ""); if (c) { try { applyData(JSON.parse(c), true); } catch(e){} } }
+    $("#alert").innerHTML = `<b>Gagal membaca data.</b> ${navigator.onLine === false ? "Tiada sambungan internet. " : esc(msg) + ". "}Data terakhir dipaparkan; cuba lagi dalam ${refreshSec} saat.`;
+    $("#alert").hidden = false;
+  };
+  const ok = d => {
+    if (!d || d.error) return fail(d ? d.error : "Tiada data");
+    store.set("cc-last", JSON.stringify(d));
+    applyData(d, true);
+  };
+  if (GAS) google.script.run.withSuccessHandler(ok).withFailureHandler(fail).dataDashboard(key);
+  else fetch(`${API_URL}?api=data&key=${encodeURIComponent(key)}`, { cache: "no-store" })
+    .then(r => r.json()).then(ok).catch(fail);
+}
+
+/* ---------- Pintu kunci akses ---------- */
+function askKey(err){
+  $("#gate").hidden = false;
+  $("#gateErr").textContent = err || ""; $("#gateErr").hidden = !err;
+  $("#mode").textContent = "PERLU KUNCI"; $("#mode").className = "demo";
+  setTimeout(() => $("#gateKey").focus(), 50);
+}
+$("#gateForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const k = $("#gateKey").value.trim(); if (!k) return;
+  setKey(k); $("#gateKey").value = ""; $("#gate").hidden = true;
+  $("#mode").textContent = "MEMUATKAN…"; loadData();
+});
+try { const qk = new URLSearchParams(location.search).get("key"); if (qk) setKey(qk); } catch(e){}
+
+/* ---------- Status tugasan ---------- */
+const ST = {
+  lewat:{label:"LEWAT", order:0}, hari:{label:"HARI INI", order:1},
+  proses:{label:"DALAM PROSES", order:2}, belum:{label:"BELUM MULA", order:3}, selesai:{label:"SELESAI", order:4}
+};
+function statusOf(t){
+  if (t.status === "Selesai") return "selesai";
+  if (!t.tarikh) return t.status === "Belum Mula" ? "belum" : "proses";
+  const d = Math.round((t.tarikh - today0())/86400000);
+  if (d < 0) return "lewat";
+  if (d === 0) return "hari";
+  return t.status === "Belum Mula" ? "belum" : "proses";
+}
+function dueText(t){
+  if (t.status === "Selesai") return "Selesai";
+  if (!t.tarikh) return "Tiada tarikh";
+  const d = Math.round((t.tarikh - today0())/86400000);
+  if (d < 0) return `Lewat ${-d} hari`;
+  if (d === 0) return "Hari ini";
+  if (d === 1) return "Esok";
+  return `${d} hari lagi`;
+}
+
+/* ---------- KPI ---------- */
+let lastKpi = {};
+function renderKpis(){
+  const s = DATA.tugasan.map(statusOf);
+  const n = k => s.filter(x => x===k).length;
+  const total = s.length, siap = n("selesai"), lewat = n("lewat"), hari = n("hari");
+  const on = DATA.pwa.filter(p => p.status==="online").length;
+  const checked = DATA.pwa.some(p => p.status !== "na");
+  const groups = new Set(feed.map(m => m.kumpulan)).size;
+  const pwaKpi = checked
+    ? { id:"pwa", lbl:"PWA Online", val:`${on}/${DATA.pwa.length}`, sub:DATA.pwa.length-on ? `${DATA.pwa.length-on} perlu disemak` : "semua berfungsi", cls:on<DATA.pwa.length?"warn":"ok" }
+    : { id:"pwa", lbl:"Aplikasi PWA", val:DATA.pwa.length, sub:"semakan status: Fasa 4", cls:"" };
+  const items = [
+    { id:"total", lbl:"Jumlah Tugasan", val:total, sub:`${total-siap} masih aktif`, cls:"" },
+    { id:"siap", lbl:"Selesai", val:siap, sub:total ? `${Math.round(siap/total*100)}% kadar siap` : "tiada tugasan", cls:"ok" },
+    { id:"hari", lbl:"Tamat Hari Ini", val:hari, sub:"perlu tindakan segera", cls:hari?"warn":"" },
+    { id:"lewat", lbl:"Lewat", val:lewat, sub:lewat?"melepasi tarikh akhir":"tiada tunggakan", cls:lewat?"crit alarm":"ok" },
+    { id:"msg", lbl:"Mesej Hari Ini", val:mesejBaru, sub:groups ? `dari ${groups} kumpulan` : "bot belum disambung", cls:"info" },
+    pwaKpi,
+  ];
+  $("#kpis").innerHTML = items.map(k => `
+    <div class="kpi ${k.cls}">
+      <div class="lbl">${k.lbl}</div>
+      <div class="val ${lastKpi[k.id]!==undefined && lastKpi[k.id]!==k.val ? "bump":""}">${k.val}</div>
+      <div class="sub">${k.sub}</div>
+    </div>`).join("");
+  items.forEach(k => lastKpi[k.id] = k.val);
+}
+
+/* ---------- Papan tugasan ---------- */
+const FILTERS = [
+  { id:"semua", lbl:"Semua", f:()=>true },
+  { id:"lewat", lbl:"Lewat", f:s=>s==="lewat" },
+  { id:"hari", lbl:"Hari Ini", f:s=>s==="hari" },
+  { id:"aktif", lbl:"Aktif", f:s=>s==="proses"||s==="belum" },
+  { id:"selesai", lbl:"Selesai", f:s=>s==="selesai" },
+];
+let filter = store.get("cc-filter","semua");
+if (!FILTERS.some(f => f.id===filter)) filter = "semua";
+
+function renderTasks(){
+  const rows = DATA.tugasan.map(t => ({t, s:statusOf(t)}));
+  $("#chips").innerHTML = FILTERS.map(f => `
+    <button type="button" class="chip" data-f="${f.id}" aria-pressed="${f.id===filter}">${f.lbl}<span class="n">${rows.filter(r=>f.f(r.s)).length}</span></button>`).join("");
+  const fx = FILTERS.find(f => f.id===filter).f;
+  const tv = t => t.tarikh ? t.tarikh.getTime() : Infinity;
+  const list = rows.filter(r => fx(r.s)).sort((a,b) => ST[a.s].order-ST[b.s].order || tv(a.t)-tv(b.t));
+  $("#tcount").textContent = `${list.length} dipaparkan`;
+  $("#tbody").innerHTML = list.length ? list.map(({t,s}) => `
+    <tr class="row st-${s}">
+      <td><div class="tt">${esc(t.tajuk)}</div><div class="tu">${esc(t.unit)}</div></td>
+      <td class="pic">${esc(t.pic)}</td>
+      <td class="due">${t.tarikh ? fmtDate(t.tarikh) : "—"}<small>${dueText(t)}</small></td>
+      <td><div class="prog"><div class="bar"><i style="width:${t.kemajuan}%"></i></div><span>${t.kemajuan}%</span></div></td>
+      <td><span class="pill">${ST[s].label}</span></td>
+    </tr>`).join("") : `<tr><td colspan="5" class="empty">Tiada tugasan dalam kategori ini.</td></tr>`;
+}
+$("#chips").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  filter = b.dataset.f; store.set("cc-filter", filter); renderTasks();
+});
+
+/* ---------- Telegram ---------- */
+const GCLS = { "Guru":"g-guru", "Pentadbir":"g-admin", "Bot":"g-bot", "Ibu Bapa":"g-ibubapa" };
+const GPAL = ["g-guru","g-admin","g-bot","g-ibubapa"];
+function grpClass(n){
+  if (GCLS[n]) return GCLS[n];
+  let h = 0; for (const ch of String(n)) h = (h*31 + ch.charCodeAt(0)) >>> 0;
+  return GPAL[h % GPAL.length];
+}
+function msgHTML(m, isNew){
+  return `<li class="msg ${isNew?"new":""}">
+    <time class="mono">${hhmm(m.masa)}</time>
+    <div class="who"><span class="grp ${grpClass(m.kumpulan)}">${esc(m.kumpulan)}</span><b>${esc(m.pengirim)}</b></div>
+    <p>${esc(m.teks)}</p>
+  </li>`;
+}
+function renderFeed(fresh, key){
+  $("#feed").innerHTML = feed.length
+    ? feed.map(m => msgHTML(m, fresh && key && fresh.has(key(m)))).join("")
+    : `<li class="empty">Belum ada mesej. Tambah bot ke kumpulan Telegram, matikan Group Privacy, dan mesej akan muncul di sini dalam masa 1 minit.</li>`;
+}
+let poolIdx = 0;
+function pushDemoMessage(){
+  if (LIVE) return;
+  const m = {...DEMO_POOL[poolIdx++ % DEMO_POOL.length], masa:new Date()};
+  feed.unshift(m); feed = feed.slice(0,40); mesejBaru++;
+  $("#feed").insertAdjacentHTML("afterbegin", msgHTML(m,true));
+  const items = $("#feed").children; while (items.length > 40) items[items.length-1].remove();
+  renderKpis();
+}
+
+/* ---------- PWA ---------- */
+const STL = { online:"ONLINE", semak:"SEMAK", luar:"LUAR TALIAN" };
+function initials(n){ return n.replace(/^e-/i,"E ").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase(); }
+function renderPwa(){
+  $("#pcount").textContent = `${DATA.pwa.length} aplikasi`;
+  $("#tiles").innerHTML = DATA.pwa.map(p => { const ok = /^https?:\/\//i.test(p.pautan||""); return `
+    <a class="tile" href="${ok ? esc(p.pautan) : "#"}" ${ok ? 'target="_blank" rel="noopener"' : 'title="Pautan belum diisi atau tidak sah (mesti bermula https://)"'}>
+      <span class="dot d-${p.status}">${STL[p.status]||""}</span>
+      <span class="ico">${esc(initials(p.nama))}</span>
+      <span class="nm">${esc(p.nama)}</span>
+      <span class="cat">${esc(p.kategori)}</span>
+    </a>`; }).join("") + `<div class="tile add"><div><b>+</b>Tambah baris dalam tab "PWA"</div></div>`;
+}
+$("#tiles").addEventListener("click", e => { const a = e.target.closest("a.tile"); if (a && a.getAttribute("href")==="#") e.preventDefault(); });
+
+/* ---------- Jadual ---------- */
+function renderTimeline(){
+  const now = new Date(), nm = now.getHours()*60 + now.getMinutes();
+  $("#jdate").textContent = `${HARI[now.getDay()]}, ${fmtDate(now)}`;
+  let nextMarked = false;
+  if (!DATA.jadual.length){ $("#tl").innerHTML = `<li class="empty">Tiada acara untuk hari ini dalam tab "Jadual".</li>`; return; }
+  $("#tl").innerHTML = DATA.jadual.map(e => {
+    const a = toMin(e.mula), b = toMin(e.tamat);
+    let cls = "past", extra = "";
+    if (nm >= a && nm < b){ cls = "now"; extra = `<div class="nowbar"><i style="width:${Math.round((nm-a)/(b-a)*100)}%"></i></div>`; }
+    else if (nm < a){ cls = nextMarked ? "" : "next"; nextMarked = true; }
+    return `<li class="ev ${cls}">
+      <div class="t">${e.mula}–${e.tamat}</div>
+      <div class="node"><i></i></div>
+      <div><div class="a">${esc(e.acara)}${cls==="now"?'<span class="tag">SEDANG</span>':""}</div><div class="l">${esc(e.lokasi)}</div></div>
+      ${extra}
+    </li>`;
+  }).join("");
+}
+
+/* ---------- Ticker ---------- */
+function renderTicker(){
+  const list = DATA.pengumuman.length ? DATA.pengumuman : ["Tiada pengumuman aktif"];
+  const html = list.map(p => `<span>${esc(p)}</span>`).join("");
+  if ($("#tick").innerHTML !== html) $("#tick").innerHTML = html;   // elak ticker bermula semula setiap kali segar
+}
+
+/* ---------- Jam & kitaran segar semula ---------- */
+function tickClock(){
+  const d = new Date();
+  $("#clock").textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  $("#date").textContent = `${HARI[d.getDay()]} · ${pad(d.getDate())} ${BULAN[d.getMonth()]} ${d.getFullYear()}`;
+}
+let countdown = 30;
+function cycle(){
+  countdown--;
+  if (countdown <= 0){ countdown = refreshSec; LIVE ? loadData() : renderAll(); }
+  $("#sync").textContent = `${countdown}s`;
+}
+function renderAll(){ renderKpis(); renderTasks(); renderTimeline(); }
+
+/* ---------- Mod TV ---------- */
+let wakeLock = null;
+$("#tvBtn").addEventListener("click", async () => {
+  const on = !document.body.classList.contains("tv");
+  document.body.classList.toggle("tv", on);
+  $("#tvBtn").textContent = on ? "Keluar Mod TV" : "Mod TV";
+  try { on ? await document.documentElement.requestFullscreen() : (document.fullscreenElement && await document.exitFullscreen()); } catch(e){}
+  try { if (on && navigator.wakeLock) wakeLock = await navigator.wakeLock.request("screen"); else if (wakeLock){ await wakeLock.release(); wakeLock = null; } } catch(e){}
+});
+
+/* ---------- Mula ---------- */
+if (LIVE) { $("#mode").textContent = "MEMUATKAN…"; DATA = prepare({tugasan:[], pwa:[], jadual:[], pengumuman:[], telegram:[]}); renderAll(); renderFeed(); renderPwa(); renderTicker(); loadData(); }
+else applyData(SAMPLE, false);
+tickClock();
+setInterval(tickClock, 1000);
+setInterval(cycle, 1000);
+setInterval(pushDemoMessage, 15000);
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
