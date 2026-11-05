@@ -273,13 +273,13 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
   <section class="panel" aria-labelledby="h-tg">
     <div class="ph"><h2 id="h-tg">Suapan Telegram <small id="tgsrc">demo</small></h2><span class="live">LIVE</span></div>
     <ol class="feed" id="feed" aria-live="polite"></ol>
-    <div class="pf">Sumber: <b>Bot Telegram → Tab "Telegram"</b> · mesej kumpulan yang ditanda "Papar di Dashboard"</div>
+    <div class="pf">Sumber: <b>Telegram Web (Tampermonkey) → Tab "Telegram"</b> · kumpulan yang ditanda "Papar di Dashboard"</div>
   </section>
 
   <section class="panel" aria-labelledby="h-pwa">
     <div class="ph"><h2 id="h-pwa">Pelancar Aplikasi PWA <small id="pcount"></small></h2></div>
     <div class="tiles" id="tiles"></div>
-    <div class="pf">Sumber: <b>Tab "PWA"</b> (Nama, Pautan, Kategori, Aktif, Urutan) · semakan status pada Fasa 4</div>
+    <div class="pf">Sumber: <b>Tab "PWA"</b> (Nama, Pautan, Kategori, Aktif, Urutan) · status disemak setiap 10 minit</div>
   </section>
 
   <section class="panel" aria-labelledby="h-jd">
@@ -493,13 +493,13 @@ function renderKpis(){
   const groups = new Set(feed.map(m => m.kumpulan)).size;
   const pwaKpi = checked
     ? { id:"pwa", lbl:"PWA Online", val:`${on}/${DATA.pwa.length}`, sub:DATA.pwa.length-on ? `${DATA.pwa.length-on} perlu disemak` : "semua berfungsi", cls:on<DATA.pwa.length?"warn":"ok" }
-    : { id:"pwa", lbl:"Aplikasi PWA", val:DATA.pwa.length, sub:"semakan status: Fasa 4", cls:"" };
+    : { id:"pwa", lbl:"Aplikasi PWA", val:DATA.pwa.length, sub:"status belum disemak", cls:"" };
   const items = [
     { id:"total", lbl:"Jumlah Tugasan", val:total, sub:`${total-siap} masih aktif`, cls:"" },
     { id:"siap", lbl:"Selesai", val:siap, sub:total ? `${Math.round(siap/total*100)}% kadar siap` : "tiada tugasan", cls:"ok" },
     { id:"hari", lbl:"Tamat Hari Ini", val:hari, sub:"perlu tindakan segera", cls:hari?"warn":"" },
     { id:"lewat", lbl:"Lewat", val:lewat, sub:lewat?"melepasi tarikh akhir":"tiada tunggakan", cls:lewat?"crit alarm":"ok" },
-    { id:"msg", lbl:"Mesej Hari Ini", val:mesejBaru, sub:groups ? `dari ${groups} kumpulan` : "bot belum disambung", cls:"info" },
+    { id:"msg", lbl:"Mesej Hari Ini", val:mesejBaru, sub:groups ? `dari ${groups} kumpulan` : "Telegram Web belum disambung", cls:"info" },
     pwaKpi,
   ];
   $("#kpis").innerHTML = items.map(k => `
@@ -562,7 +562,7 @@ function msgHTML(m, isNew){
 function renderFeed(fresh, key){
   $("#feed").innerHTML = feed.length
     ? feed.map(m => msgHTML(m, fresh && key && fresh.has(key(m)))).join("")
-    : `<li class="empty">Belum ada mesej. Tambah bot ke kumpulan Telegram, matikan Group Privacy, dan mesej akan muncul di sini dalam masa 1 minit.</li>`;
+    : `<li class="empty">Belum ada mesej. Buka kumpulan di web.telegram.org (skrip Tampermonkey aktif) dan mesej akan muncul di sini dalam masa sekitar 1 minit.</li>`;
 }
 let poolIdx = 0;
 function pushDemoMessage(){
