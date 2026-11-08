@@ -12,6 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
+<script>try{ if (localStorage.getItem("cc-theme") === "light") { document.documentElement.setAttribute("data-theme","light"); } }catch(e){}</script>
 <script src="config.js"></script><title>Command Centre SMKTM</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,7 +30,21 @@
   --f-display:"Chakra Petch", "Bahnschrift", "Segoe UI", sans-serif;
   --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --f-mono:"JetBrains Mono", "Consolas", ui-monospace, monospace;
+  --line-soft:rgba(22,54,80,.6);
 }
+/* Tema cerah (untuk bilik guru yang terang) */
+html[data-theme="light"]{
+  color-scheme: light;
+  --bg:#eef3f7; --bg2:#e2eaf1; --panel:#ffffff; --panel2:#f2f6f9;
+  --line:#c9d6e2; --line2:#a5bacd; --line-soft:rgba(120,150,175,.35);
+  --fg:#10243a; --dim:#4a647a; --faint:#8aa0b3;
+  --ice:#0b6fa4; --ice-soft:rgba(11,111,164,.10);
+  --ok:#14875a; --warn:#a85f00; --crit:#c62839; --info:#4a56c9;
+  --ok-soft:rgba(20,135,90,.12); --warn-soft:rgba(168,95,0,.13); --crit-soft:rgba(198,40,57,.12); --info-soft:rgba(74,86,201,.12);
+}
+html[data-theme="light"] body::before, html[data-theme="light"] body::after{display:none}
+html[data-theme="light"] .fab, html[data-theme="light"] .ico, html[data-theme="light"] .tag, html[data-theme="light"] .tlabel{color:#fff}
+.zoomable{zoom:var(--zoom,1)}
 *{box-sizing:border-box}
 [hidden]{display:none !important}
 html,body{min-height:100%}
@@ -160,7 +175,7 @@ h1 span{color:var(--ice)}
 .panel::before{top:-1px; left:-1px; border-width:2px 0 0 2px}
 .panel::after{bottom:-1px; right:-1px; border-width:0 2px 2px 0}
 .ph{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line)}
-h2{margin:0; font:600 15px/1 var(--f-display); letter-spacing:.14em; text-transform:uppercase}
+h2{flex:1 1 auto; margin:0; font:600 15px/1 var(--f-display); letter-spacing:.14em; text-transform:uppercase}
 h2 small{font:500 11px/1 var(--f-mono); letter-spacing:.08em; color:var(--dim); margin-left:8px; text-transform:none}
 .pf{margin-top:auto; padding:8px 14px; border-top:1px dashed var(--line); font:400 11px/1.4 var(--f-mono); color:var(--faint)}
 .pf b{color:var(--dim); font-weight:500}
@@ -175,7 +190,7 @@ h2 small{font:500 11px/1 var(--f-mono); letter-spacing:.08em; color:var(--dim); 
 .tablewrap{overflow-x:auto; max-height:430px; overflow-y:auto}
 table{width:100%; border-collapse:collapse; min-width:620px}
 th{position:sticky; top:0; background:var(--panel2); text-align:left; font:500 10.5px/1 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--dim); padding:9px 12px; border-bottom:1px solid var(--line); z-index:1}
-td{padding:10px 12px; border-bottom:1px solid rgba(22,54,80,.6); vertical-align:middle}
+td{padding:10px 12px; border-bottom:1px solid var(--line-soft); vertical-align:middle}
 tr.row{border-left:3px solid transparent}
 tr.row td:first-child{border-left:3px solid var(--s, transparent)}
 tr.row:hover td{background:rgba(95,212,255,.035)}
@@ -201,7 +216,7 @@ tr.row:hover td{background:rgba(95,212,255,.035)}
 .live::before{content:""; width:8px; height:8px; border-radius:50%; background:var(--crit); animation:blink 1.2s steps(2) infinite}
 @keyframes blink{50%{opacity:.2}}
 .feed{list-style:none; margin:0; padding:0; overflow-y:auto; max-height:430px; flex:1}
-.msg{display:grid; grid-template-columns:auto minmax(0,1fr); gap:2px 10px; padding:10px 14px; border-bottom:1px solid rgba(22,54,80,.6)}
+.msg{display:grid; grid-template-columns:auto minmax(0,1fr); gap:2px 10px; padding:10px 14px; border-bottom:1px solid var(--line-soft)}
 .msg time{font:500 11.5px/1.5 var(--f-mono); color:var(--ice); grid-row:span 2}
 .msg .who{display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:12px; color:var(--dim)}
 .msg .who b{color:var(--fg); font-weight:600}
@@ -285,6 +300,109 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
   .clock #clock{font-size:22px}
   .ev{grid-template-columns:76px 16px minmax(0,1fr)}
 }
+/* ---------- Kawalan paparan (tema, saiz teks) ---------- */
+.tools-h{display:flex; gap:6px}
+.btn-sq{padding:9px 11px; min-width:38px}
+
+/* ---------- Toast & buat asal ---------- */
+.toasts{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(76px + env(safe-area-inset-bottom,0px)); z-index:80; display:flex; flex-direction:column; gap:8px; width:min(460px, calc(100vw - 24px)); pointer-events:none}
+.toast{pointer-events:auto; display:flex; align-items:center; gap:10px; padding:11px 12px 11px 14px; background:var(--panel2); color:var(--fg); border:1px solid var(--line2); border-left:4px solid var(--ice); box-shadow:0 8px 28px rgba(0,0,0,.5); font:500 13px/1.35 var(--f-body); animation:toastin .2s ease-out}
+.toast.ok{border-left-color:var(--ok)} .toast.err{border-left-color:var(--crit)} .toast.warn{border-left-color:var(--warn)}
+.toast span{flex:1; overflow-wrap:anywhere}
+.toast button{background:transparent; border:1px solid var(--line2); color:var(--ice); padding:7px 10px; min-height:34px; font:700 11px/1 var(--f-mono); letter-spacing:.06em; text-transform:uppercase; cursor:pointer; white-space:nowrap}
+.toast button:hover{border-color:var(--ice)}
+@keyframes toastin{from{opacity:0; transform:translateY(8px)}}
+
+/* ---------- Skeleton memuatkan ---------- */
+.sk{position:relative; overflow:hidden; background:var(--panel2); border:1px solid var(--line)}
+.sk::after{content:""; position:absolute; inset:0; background:linear-gradient(90deg, transparent, var(--ice-soft), transparent); transform:translateX(-100%); animation:skm 1.4s infinite}
+@keyframes skm{to{transform:translateX(100%)}}
+.sk-line{height:14px; margin:10px 14px; border:0}
+.sk-kpi{height:88px}
+.sk-tile{height:96px}
+
+/* ---------- Perlu perhatian ---------- */
+.focus{display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:12px; margin-bottom:16px}
+.fcard{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--k, var(--ice)); padding:10px 12px; min-width:0}
+.fcard[data-go]{cursor:pointer}
+.fcard[data-go]:hover{border-color:var(--k, var(--ice))}
+.fcard h3{margin:0 0 6px; font:600 11px/1.2 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--k, var(--dim))}
+.fcard ul{list-style:none; margin:0; padding:0; display:grid; gap:4px}
+.fcard li{font-size:13px; line-height:1.35; overflow-wrap:anywhere}
+.fcard li small{display:block; color:var(--dim); font:400 11px/1.3 var(--f-mono)}
+.fcard .more{color:var(--dim); font:500 11.5px/1.3 var(--f-mono)}
+.fcard.crit{--k:var(--crit)} .fcard.warn{--k:var(--warn)} .fcard.ok{--k:var(--ok)} .fcard.info{--k:var(--info)}
+
+/* ---------- Panel boleh dilipat ---------- */
+.fold-btn{order:-1; background:transparent; border:1px solid var(--line2); color:var(--dim); width:30px; height:30px; display:grid; place-items:center; cursor:pointer; font-size:14px; line-height:1}
+.fold-btn:hover{border-color:var(--ice); color:var(--ice)}
+.fold-btn::before{content:"▾"}
+.panel.collapsed .fold-btn::before{content:"▸"}
+.panel.collapsed > :not(.ph){display:none !important}
+.panel.collapsed .ph{border-bottom:0}
+
+/* ---------- Carian & penapis ---------- */
+.tools{display:flex; flex-wrap:wrap; gap:8px; padding:10px 14px; border-bottom:1px solid var(--line)}
+.tools input,.tools select{background:var(--bg); border:1px solid var(--line2); color:var(--fg); padding:8px 10px; min-height:38px; font:500 13px/1.2 var(--f-body); min-width:0}
+.tools input{flex:1 1 160px}
+.tools select{flex:0 1 180px}
+.tools input:focus,.tools select:focus{border-color:var(--ice); outline:none}
+
+/* ---------- PWA: ikon sebenar & sematan ---------- */
+.tw{position:relative; display:flex; min-width:0}
+.tw .tile{flex:1; min-width:0}
+.tw .pin{position:absolute; right:4px; bottom:4px; background:transparent; border:0; color:var(--faint); font-size:18px; line-height:1; width:36px; height:36px; cursor:pointer}
+.tw .pin:hover{color:var(--warn)}
+.tw .pin[aria-pressed="true"]{color:var(--warn)}
+.ico{position:relative; overflow:hidden}
+.ico img{position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#fff; padding:3px}
+
+/* ---------- Relief: kumpulan hari & status ---------- */
+.relief-day{margin:8px 0 0; font:600 11px/1 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--dim)}
+.relief-day:first-child{margin-top:0}
+.relief-day.today{color:var(--warn)}
+.relief-card.st-tugas{border-left-color:var(--ice)}
+.relief-card.st-tugas .relief-class{color:var(--ice)}
+.relief-ops{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+.rbtn{background:transparent; border:1px solid var(--line2); color:var(--dim); padding:6px 10px; min-height:32px; font:600 10.5px/1 var(--f-mono); letter-spacing:.06em; text-transform:uppercase; cursor:pointer}
+.rbtn:hover{border-color:var(--ice); color:var(--ice)}
+.rbtn.ok:hover{border-color:var(--ok); color:var(--ok)}
+.rbtn.del:hover{border-color:var(--crit); color:var(--crit)}
+.rbtn:disabled{opacity:.5; cursor:wait}
+.relief-card.st-perlu .pill{color:var(--warn); background:var(--warn-soft)}
+.relief-card.st-tugas .pill{color:var(--ice); background:var(--ice-soft)}
+.relief-card.done .pill{color:var(--ok); background:var(--ok-soft)}
+
+/* ---------- Papan tugasan: kad pada skrin kecil ---------- */
+@media (max-width:640px){
+  .tablewrap{overflow-x:visible}
+  table{display:block; min-width:0}
+  thead{display:none}
+  tbody{display:block}
+  tr.row{display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"title title" "pic due" "prog prog" "pill ops"; gap:8px 12px; padding:12px 14px; border-bottom:1px solid var(--line-soft); border-left:3px solid var(--s, transparent)}
+  tr.row td{display:block; border:0 !important; padding:0; min-width:0}
+  tr.row:hover td{background:none}
+  .c-title{grid-area:title} .c-pic{grid-area:pic} .c-due{grid-area:due; text-align:right} .c-prog{grid-area:prog} .c-pill{grid-area:pill; align-self:center} .c-ops{grid-area:ops}
+  .pic{white-space:normal; color:var(--dim)}
+  .prog{min-width:0}
+  td.empty{display:block; border:0}
+}
+@media (max-width:900px){
+  .grid .panel[data-p="tugas"]{order:1} .grid .panel[data-p="relief"]{order:2} .grid .panel[data-p="jadual"]{order:3}
+  .grid .panel[data-p="tg"]{order:4} .grid .panel[data-p="pwa"]{order:5}
+}
+@media (max-width:520px){
+  .eyebrow,.kpi .lbl,.entry-field label{font-size:11.5px}
+  .cat,.tu,.relief-meta,.ev .l,.kpi .sub,.due small{font-size:12px}
+  .tools select{flex:1 1 100%}
+  .focus{grid-template-columns:minmax(0,1fr); gap:8px}
+  .tools-h{order:3}
+}
+@media (pointer:coarse){
+  .btn,.chip,.task-ops button,.rbtn,.relief-del,.fold-btn{min-height:44px}
+  .fold-btn{width:44px}
+  .tools input,.tools select{min-height:44px}
+}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none !important; transition:none !important}
   .move{padding-left:16px; white-space:normal; flex-wrap:wrap; gap:6px 32px}
@@ -294,7 +412,7 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
 <body>
 
 
-<header class="top">
+<header class="top zoomable">
   <div class="brand">
     <span class="pulse" aria-hidden="true"></span>
     <div>
@@ -310,21 +428,31 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
       <span>DATA</span><b class="demo" id="mode">CONTOH</b>
       <span>SEGAR SEMULA</span><b id="sync" class="mono">30s</b>
     </div>
+    <div class="tools-h" role="group" aria-label="Paparan">
+      <button class="btn btn-sq" id="fontMinus" type="button" aria-label="Kecilkan teks" title="Kecilkan teks">A&minus;</button>
+      <button class="btn btn-sq" id="fontPlus" type="button" aria-label="Besarkan teks" title="Besarkan teks">A+</button>
+      <button class="btn btn-sq" id="themeBtn" type="button" aria-label="Tukar tema cerah/gelap" title="Tema cerah / gelap">&#9728;</button>
+    </div>
     <button class="btn" id="tvBtn" type="button">Mod TV</button>
   </div>
 </header>
 
-<div class="alert" id="alert" role="alert" hidden></div>
-<section class="kpis" id="kpis" aria-label="Ringkasan"></section>
+<div class="alert zoomable" id="alert" role="alert" hidden></div>
+<section class="kpis zoomable" id="kpis" aria-label="Ringkasan"></section>
+<section class="focus zoomable" id="focus" aria-label="Perlu perhatian sekarang"></section>
 
-<main class="grid">
-  <section class="panel" aria-labelledby="h-tugas">
+<main class="grid zoomable">
+  <section class="panel" data-p="tugas" aria-labelledby="h-tugas">
     <div class="ph">
       <h2 id="h-tugas">Papan Tugasan <small id="tcount"></small></h2>
       <div class="task-actions">
         <div class="chips" id="chips"></div>
         <button class="btn btn-primary" id="addTaskBtn" type="button">+ Tugasan</button>
       </div>
+    </div>
+    <div class="tools">
+      <input type="search" id="taskSearch" placeholder="Cari tajuk, PIC atau unit…" aria-label="Cari tugasan" autocomplete="off">
+      <select id="unitFilter" aria-label="Tapis ikut unit"><option value="">Semua unit</option></select>
     </div>
     <div class="tablewrap">
       <table>
@@ -335,19 +463,20 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
     <div class="pf">Sumber: <b>Tab "Tugasan"</b> dalam Google Sheet · <span id="upd">data contoh</span></div>
   </section>
 
-  <section class="panel" aria-labelledby="h-tg">
+  <section class="panel" data-p="tg" aria-labelledby="h-tg">
     <div class="ph"><h2 id="h-tg">Suapan Telegram <small id="tgsrc">demo</small></h2><span class="live">LIVE</span></div>
+    <div class="tools"><select id="tgFilter" aria-label="Tapis kumpulan Telegram"><option value="">Semua kumpulan</option></select></div>
     <ol class="feed" id="feed" aria-live="polite"></ol>
     <div class="pf">Sumber: <b>Telegram Web (Tampermonkey) → Tab "Telegram"</b> · kumpulan yang ditanda "Papar di Dashboard"</div>
   </section>
 
-  <section class="panel" aria-labelledby="h-pwa">
+  <section class="panel" data-p="pwa" aria-labelledby="h-pwa">
     <div class="ph"><h2 id="h-pwa">Pelancar Aplikasi PWA <small id="pcount"></small></h2></div>
     <div class="tiles" id="tiles"></div>
     <div class="pf">Sumber: <b>Tab "PWA"</b> (Nama, Pautan, Kategori, Aktif, Urutan) · status disemak setiap 10 minit</div>
   </section>
 
-  <section class="panel" aria-labelledby="h-relief">
+  <section class="panel" data-p="relief" aria-labelledby="h-relief">
     <div class="ph">
       <h2 id="h-relief">Peringatan Kelas Relief <small id="reliefCount"></small></h2>
       <button class="btn btn-primary" id="addReliefBtn" type="button">+ Relief</button>
@@ -356,12 +485,14 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
     <div class="pf">Sumber: <b>Tab "Relief"</b> dalam Google Sheet · kelas yang memerlukan guru ganti</div>
   </section>
 
-  <section class="panel" aria-labelledby="h-jd">
+  <section class="panel" data-p="jadual" aria-labelledby="h-jd">
     <div class="ph"><h2 id="h-jd">Jadual Hari Ini</h2><small class="mono" style="color:var(--dim)" id="jdate"></small></div>
     <ol class="tl" id="tl"></ol>
     <div class="pf">Sumber: <b>Tab "Jadual"</b></div>
   </section>
 </main>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
 
 <button class="fab" id="clockFab" type="button" aria-controls="clockWin">&#9201; Clock In/Out</button>
 <div class="fw" id="clockWin" role="dialog" aria-label="Clock In/Out Geolocation" hidden>
@@ -570,12 +701,12 @@ const $ = s => document.querySelector(s);
 const HARI = ["Ahad","Isnin","Selasa","Rabu","Khamis","Jumaat","Sabtu"];
 const BULAN = ["Jan","Feb","Mac","Apr","Mei","Jun","Jul","Ogo","Sep","Okt","Nov","Dis"];
 const pad = n => String(n).padStart(2,"0");
-const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const today0 = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
 const fmtDate = d => `${pad(d.getDate())} ${BULAN[d.getMonth()]}`;
 const hhmm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-const toMin = s => { const m = /^(d{1,2})[:.](d{2})/.exec(String(s == null ? "" : s).trim()); return m ? (+m[1])*60 + (+m[2]) : NaN; };
+const toMin = s => { const m = /^(\d{1,2})[:.](\d{2})/.exec(String(s == null ? "" : s).trim()); return m ? (+m[1])*60 + (+m[2]) : NaN; };
 const store = {
   get(k,def){ try{ return localStorage.getItem(k) ?? def; }catch(e){ return def; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
@@ -585,6 +716,58 @@ const readList = key => {
   catch(e){ return []; }
 };
 const writeList = (key, value) => store.set(key, JSON.stringify(value));
+
+/* ---------- Toast & buat asal ---------- */
+function toast(msg, type, o){
+  o = o || {};
+  const box = $("#toasts");
+  const el = document.createElement("div");
+  el.className = "toast " + (type || "");
+  el.setAttribute("role", type === "err" ? "alert" : "status");
+  const sp = document.createElement("span"); sp.textContent = msg; el.appendChild(sp);
+  let timer = null, closed = false;
+  const close = expire => { if (closed) return; closed = true; clearTimeout(timer); el.remove(); if (expire && o.onExpire) o.onExpire(); };
+  el._close = close;
+  if (o.actionLabel) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = o.actionLabel;
+    b.addEventListener("click", () => { close(false); if (o.onAction) o.onAction(); });
+    el.appendChild(b);
+  }
+  box.appendChild(el);
+  while (box.children.length > 4) box.firstChild._close(true);   // toast tertua tamat (tindakan tertangguh dilaksanakan)
+  timer = setTimeout(() => close(true), o.ms || (type === "err" ? 7000 : 3500));
+  return { close };
+}
+const hiddenKeys = new Set();   // item yang disembunyikan semasa tempoh "Buat asal"
+function softDelete(key, label, commit){
+  hiddenKeys.add(key); renderAll();
+  toast(label + " dipadam", "ok", {
+    ms: 6000, actionLabel: "Buat asal",
+    onAction: () => { hiddenKeys.delete(key); renderAll(); },
+    onExpire: async () => {
+      try { await commit(); }
+      catch(err) { hiddenKeys.delete(key); renderAll(); toast("Gagal memadam: " + (err.message || err), "err"); if (LIVE) loadData(); return; }
+      hiddenKeys.delete(key); renderAll(); if (LIVE) loadData();
+    }
+  });
+}
+
+/* ---------- Tema (cerah/gelap) & saiz teks ---------- */
+(function(){
+  const root = document.documentElement, btn = $("#themeBtn");
+  const applyTheme = t => {
+    if (t === "light") root.setAttribute("data-theme", "light"); else root.removeAttribute("data-theme");
+    btn.textContent = t === "light" ? "☾" : "☀";
+    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", t === "light" ? "#eef3f7" : "#060b12");
+  };
+  applyTheme(store.get("cc-theme", "dark"));
+  btn.addEventListener("click", () => { const t = root.getAttribute("data-theme") === "light" ? "dark" : "light"; store.set("cc-theme", t); applyTheme(t); });
+  let z = parseFloat(store.get("cc-zoom", "1")) || 1;
+  const applyZoom = () => { z = Math.min(1.5, Math.max(0.9, Math.round(z * 10) / 10)); root.style.setProperty("--zoom", z); store.set("cc-zoom", String(z)); };
+  applyZoom();
+  $("#fontPlus").addEventListener("click", () => { z += 0.1; applyZoom(); });
+  $("#fontMinus").addEventListener("click", () => { z -= 0.1; applyZoom(); });
+})();
 
 /* ---------- Keadaan & sumber data ---------- */
 const GAS = typeof google !== "undefined" && google.script && google.script.run;   // dalam Apps Script
@@ -640,6 +823,7 @@ function loadData(){
     const msg = String((err && err.message) || err);
     if (/unauthorized/i.test(msg)) { NEED_KEY = true; setKey(""); askKey("Kunci akses tidak sah. Sila cuba lagi."); return; }
     if (!DATA || !DATA.loaded) { const c = store.get("cc-last", ""); if (c) { try { applyData(JSON.parse(c), true); } catch(e){} } }
+    if (DATA && !DATA.loaded) { DATA.loaded = true; renderAll(); renderFeed(); renderPwa(); }   // hentikan skeleton jika tiada cache
     $("#alert").innerHTML = `<b>Gagal membaca data.</b> ${navigator.onLine === false ? "Tiada sambungan internet. " : esc(msg) + ". "}Data terakhir dipaparkan; cuba lagi dalam ${refreshSec} saat.`;
     $("#alert").hidden = false;
   };
@@ -735,6 +919,9 @@ async function syncQueue(storageKey, saveItem, after){
     }
   }
   writeList(storageKey, failed);
+  const sent = queue.length - failed.length;
+  if (sent > 0) toast(`${sent} rekod tertangguh berjaya dihantar ke Sheet`, "ok");
+  if (failed.length && Date.now() - (syncQueue._w || 0) > 300000) { syncQueue._w = Date.now(); toast(`${failed.length} rekod belum dapat dihantar; akan dicuba semula`, "warn"); }
   if (!failed.length && after) after();
 }
 
@@ -755,7 +942,7 @@ function openEntry(task){
     $("#taskTitle").value = editing.tajuk || "";
     $("#taskPic").value = editing.pic || "";
     $("#taskUnit").value = editing.unit || "";
-    if (editing.akhir && /^d{4}-d{2}-d{2}$/.test(editing.akhir)) $("#taskDue").value = editing.akhir;
+    if (editing.akhir && /^\d{4}-\d{2}-\d{2}$/.test(editing.akhir)) $("#taskDue").value = editing.akhir;
     $("#taskStatus").value = editing.status || "Dalam Proses";
     $("#taskProgress").value = Number(editing.kemajuan) || 0;
     $("#progressValue").textContent = (Number(editing.kemajuan) || 0) + "%";
@@ -816,10 +1003,12 @@ $("#entryForm").addEventListener("submit", async e => {
       renderAll();
       $("#entryStatus").className = "entry-status success";
       $("#entryStatus").textContent = LIVE ? "Perubahan disimpan dalam Google Sheet." : "Perubahan disimpan.";
-      setTimeout(() => { closeEntry(); if (LIVE) loadData(); }, 500);
+      toast(LIVE ? "Perubahan tugasan disimpan ke Sheet" : "Perubahan tugasan disimpan", "ok");
+      setTimeout(() => { closeEntry(); if (LIVE) loadData(); }, 300);
     } catch(err) {
       $("#entryStatus").className = "entry-status error";
       $("#entryStatus").textContent = String(err.message || err);
+      toast("Gagal menyimpan perubahan: " + (err.message || err), "err");
     }
     submit.disabled = false;
     return;
@@ -833,17 +1022,20 @@ $("#entryForm").addEventListener("submit", async e => {
       writeList(TASK_QUEUE, queue);
       $("#entryStatus").className = "entry-status success";
       $("#entryStatus").textContent = "Berjaya disimpan dalam Google Sheet.";
-      setTimeout(() => { closeEntry(); loadData(); }, 600);
+      toast("Tugasan disimpan ke Google Sheet", "ok");
+      setTimeout(() => { closeEntry(); loadData(); }, 300);
     } catch(err) {
       $("#entryStatus").className = "entry-status error";
       $("#entryStatus").textContent = `${err.message || err} Rekod kekal dalam barisan sinkron dan akan dicuba semula.`;
+      toast("Gagal menghantar ke Sheet. Rekod disimpan dan akan dicuba semula.", "err", { actionLabel: "Cuba lagi", onAction: syncQueuedTasks });
     }
   } else {
     const d = mergeLocalTasks(SAMPLE);
     applyData(d, false);
     $("#entryStatus").className = "entry-status success";
     $("#entryStatus").textContent = "Tugasan berjaya ditambah.";
-    setTimeout(closeEntry, 500);
+    toast("Tugasan ditambah", "ok");
+    setTimeout(closeEntry, 300);
   }
   submit.disabled = false;
 });
@@ -863,131 +1055,172 @@ async function taskApi(action, row){
 }
 const updateTaskInSheet = row => taskApi("update", row);
 
-$("#tbody").addEventListener("click", async e => {
+async function commitDeleteTask(t){
+  const k = taskKey(t);
+  if (LIVE) {
+    const queued = readList(TASK_QUEUE).some(x => t.localId && x.localId === t.localId);
+    writeList(TASK_QUEUE, readList(TASK_QUEUE).filter(x => !(t.localId && x.localId === t.localId)));
+    if (!queued) {
+      const res = await taskApi("delete", { localId:t.localId || "", _row:t._row || "", _check:{ tajuk:t.tajuk } });
+      if (res && res.found === 0) throw new Error("Rekod tidak dijumpai dalam Sheet (mungkin sudah dipadam atau baris telah berubah).");
+    }
+  } else {
+    writeList(DEMO_TASKS, readList(DEMO_TASKS).filter(x => !(t.localId && x.localId === t.localId)));
+  }
+  DATA.tugasan = DATA.tugasan.filter(x => taskKey(x) !== k);
+}
+
+$("#tbody").addEventListener("click", e => {
   const btn = e.target.closest("button[data-act]"); if (!btn) return;
   const t = findTask(btn.dataset.k); if (!t) return;
   if (btn.dataset.act === "edit") { openEntry(t); return; }
-  if (!confirm(`Padam tugasan "${t.tajuk}"?
-Rekod akan dipadam dari Google Sheet.`)) return;
-  btn.disabled = true;
-  try {
-    if (LIVE) {
-      const queued = readList(TASK_QUEUE).some(x => t.localId && x.localId === t.localId);
-      writeList(TASK_QUEUE, readList(TASK_QUEUE).filter(x => !(t.localId && x.localId === t.localId)));
-      if (!queued) {
-        const res = await taskApi("delete", { localId:t.localId || "", _row:t._row || "", _check:{ tajuk:t.tajuk } });
-        if (res && res.found === 0) throw new Error("Rekod tidak dijumpai dalam Sheet (mungkin sudah dipadam atau baris telah berubah). Data dimuat semula.");
-      }
-    } else {
-      writeList(DEMO_TASKS, readList(DEMO_TASKS).filter(x => !(t.localId && x.localId === t.localId)));
-    }
-    DATA.tugasan = DATA.tugasan.filter(x => x !== t);
-    renderAll();
-    if (LIVE) loadData();
-  } catch(err) {
-    btn.disabled = false; if (LIVE) loadData();
-    $("#alert").innerHTML = `<b>Gagal memadam tugasan.</b> ${esc(err.message || err)}`;
-    $("#alert").hidden = false;
-  }
+  softDelete("t:" + taskKey(t), "Tugasan", () => commitDeleteTask(t));   // padam dengan "Buat asal"
 });
 
-async function saveReliefToSheet(record){
-  const payload = { sheet: "Relief", type: "relief", key: getKey(), row: record };
+async function reliefApi(action, row){
   if (GAS) {
     return await new Promise((resolve, reject) => {
-      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).saveDashboard(payload);
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)
+        .saveDashboard({ action, sheet:"Relief", type:"relief", key:getKey(), row });
     });
   }
-  const params = new URLSearchParams({
-    api:"save", action:"append", sheet:"Relief", key:getKey(), type:"relief", data:JSON.stringify(record)
-  });
+  const params = new URLSearchParams({ api:"save", action, sheet:"Relief", type:"relief", key:getKey(), data:JSON.stringify(row) });
   const response = await fetch(`${API_URL}?${params.toString()}`, { cache:"no-store" });
   const result = await response.json().catch(() => ({ error:"Respons API tidak sah" }));
   if (!response.ok || result.error) throw new Error(result.error || `Ralat HTTP ${response.status}`);
   return result;
 }
+const saveReliefToSheet = record => reliefApi("append", record);
 
-function openReliefModal(){
+const reliefKey = r => r.localId || (r._row ? "r" + r._row : (r._k || (r._k = "k" + Math.random().toString(36).slice(2,9))));
+const findRelief = k => (DATA.relief || []).find(r => reliefKey(r) === k);
+const reliefState = r => { const s = String(r.status || "").toLowerCase(); return s === "selesai" ? "done" : (s === "sudah ditugaskan" ? "tugas" : "perlu"); };
+const isPendingRelief = r => !!r.localId && readList(RELIEF_QUEUE).some(x => x.localId === r.localId);
+let reliefEditing = null;   // relief yang sedang diedit (null = tambah baru)
+
+function openReliefModal(r){
   if (LIVE && NEED_KEY && !getKey()) { askKey(); return; }
+  reliefEditing = r && r.kelas ? r : null;
   $("#reliefStatusText").textContent = "";
   $("#reliefStatusText").className = "entry-status";
+  $("#reliefModal .entry-head h2").textContent = reliefEditing ? "Edit Relief" : "Kelas Perlukan Relief";
+  $("#reliefSubmit").textContent = reliefEditing ? "Simpan Perubahan" : "Simpan & Sync Sheet";
   $("#reliefDate").value = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+  if (reliefEditing) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(reliefEditing.tarikh || "")) $("#reliefDate").value = reliefEditing.tarikh;
+    const tm = /^(\d{1,2}):(\d{2})/.exec(reliefEditing.masa || "");
+    $("#reliefTime").value = tm ? pad(+tm[1]) + ":" + tm[2] : "";
+    $("#reliefClass").value = reliefEditing.kelas || "";
+    $("#reliefTeacher").value = reliefEditing.guruTidakHadir || "";
+    $("#reliefSubstitute").value = reliefEditing.guruRelief || "";
+    $("#reliefStatus").value = reliefEditing.status || "Perlu Relief";
+    $("#reliefNote").value = reliefEditing.nota || "";
+  }
   $("#reliefModal").hidden = false;
   setTimeout(() => $("#reliefClass").focus(), 30);
 }
 function closeReliefModal(){
+  reliefEditing = null;
   $("#reliefModal").hidden = true;
   $("#reliefForm").reset();
 }
-$("#addReliefBtn").addEventListener("click", openReliefModal);
+$("#addReliefBtn").addEventListener("click", () => openReliefModal());
 $("#reliefClose").addEventListener("click", closeReliefModal);
 $("#reliefCancel").addEventListener("click", closeReliefModal);
 $("#reliefModal").addEventListener("click", e => { if (e.target === $("#reliefModal")) closeReliefModal(); });
 
-function renderRelief(){
-  const list = DATA.relief || [];
-  $("#reliefCount").textContent = `${list.length} rekod`;
-  $("#reliefList").innerHTML = list.length ? list.map((r, i) => {
-    const done = String(r.status || "").toLowerCase() === "selesai";
-    const date = parseYMD(r.tarikh);
-    const dateText = date ? fmtDate(date) : (r.tarikh || "Tarikh belum ditetapkan");
-    const substitute = r.guruRelief ? `Guru relief: ${esc(r.guruRelief)}` : "Guru relief belum ditugaskan";
-    return `<article class="relief-card ${done ? "done":""}">
-      <div class="relief-top">
-        <div><div class="relief-class">${esc(r.kelas || "-")}</div><div class="relief-meta">${esc(dateText)} · ${esc(r.masa || "-")} · Guru tidak hadir: ${esc(r.guruTidakHadir || "-")}</div></div>
-        <div class="relief-actions"><span class="pill">${esc(r.status || "Perlu Relief")}</span><button class="relief-del" type="button" data-i="${i}" aria-label="Batal relief ${esc(r.kelas || "")}">Batal</button></div>
-      </div>
-      <div class="relief-meta">${substitute}</div>
-      ${r.nota ? `<p class="relief-note">${esc(r.nota)}</p>` : ""}
-    </article>`;
-  }).join("") : `<div class="relief-empty">Tiada kelas yang memerlukan relief.</div>`;
+/* Kumpulan hari: hari ini & akan datang dahulu (menaik), kemudian tarikh lepas (terkini dahulu) */
+function reliefDayInfo(tarikh){
+  const d = parseYMD(tarikh);
+  if (!d) return { order: 9e9, label: tarikh ? String(tarikh) : "Tarikh belum ditetapkan", today: false };
+  const diff = Math.round((d - today0()) / 86400000);
+  const label = diff === 0 ? "Hari ini" : diff === 1 ? "Esok" : diff === -1 ? "Semalam" : `${HARI[d.getDay()]}, ${fmtDate(d)}`;
+  return { order: diff >= 0 ? diff : 1e6 - diff, label, today: diff === 0 };
 }
 
-/* Batal / padam rekod relief yang sudah diisi */
-async function deleteReliefFromSheet(r){
-  const row = { localId:r.localId || "", _row:r._row || "", kelas:r.kelas || "", tarikh:r.tarikh || "", masa:r.masa || "" };
-  if (GAS) {
-    return await new Promise((resolve, reject) => {
-      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)
-        .saveDashboard({ action:"delete", sheet:"Relief", type:"relief", key:getKey(), row });
-    });
-  }
-  const params = new URLSearchParams({ api:"save", action:"delete", sheet:"Relief", type:"relief", key:getKey(), data:JSON.stringify(row) });
-  const response = await fetch(`${API_URL}?${params.toString()}`, { cache:"no-store" });
-  const result = await response.json().catch(() => ({ error:"Respons API tidak sah" }));
-  if (!response.ok || result.error) throw new Error(result.error || `Ralat HTTP ${response.status}`);
-  return result;
+function renderRelief(){
+  if (isLoading()) { $("#reliefCount").textContent = ""; $("#reliefList").innerHTML = skLines(3, [90, 70, 80]); return; }
+  const list = (DATA.relief || []).filter(r => !hiddenKeys.has("r:" + reliefKey(r)));
+  $("#reliefCount").textContent = `${list.length} rekod`;
+  if (!list.length) { $("#reliefList").innerHTML = `<div class="relief-empty">Tiada kelas yang memerlukan relief.</div>`; return; }
+  const groups = new Map();
+  list.forEach(r => {
+    const di = reliefDayInfo(r.tarikh), k = di.order + "|" + di.label;
+    if (!groups.has(k)) groups.set(k, { di, items: [] });
+    groups.get(k).items.push(r);
+  });
+  const t = r => { const m = toMin(r.masa); return isNaN(m) ? 1e5 : m; };
+  $("#reliefList").innerHTML = [...groups.values()].sort((a, b) => a.di.order - b.di.order).map(g => {
+    g.items.sort((a, b) => (reliefState(a) === "done") - (reliefState(b) === "done") || t(a) - t(b));
+    return `<div class="relief-day ${g.di.today ? "today" : ""}">${esc(g.di.label)}</div>` + g.items.map(r => {
+      const st = reliefState(r), k = esc(reliefKey(r));
+      const substitute = r.guruRelief ? `Guru relief: ${esc(r.guruRelief)}` : "Guru relief belum ditugaskan";
+      return `<article class="relief-card st-${st} ${st === "done" ? "done" : ""}">
+        <div class="relief-top">
+          <div><div class="relief-class">${esc(r.kelas || "-")}</div><div class="relief-meta">${esc(r.masa || "-")} · Guru tidak hadir: ${esc(r.guruTidakHadir || "-")}</div></div>
+          <span class="pill">${esc(r.status || "Perlu Relief")}</span>
+        </div>
+        <div class="relief-meta">${substitute}${isPendingRelief(r) ? ' <span class="pend" title="Belum disimpan ke Google Sheet">BELUM SYNC</span>' : ""}</div>
+        ${r.nota ? `<p class="relief-note">${esc(r.nota)}</p>` : ""}
+        <div class="relief-ops">
+          ${st !== "done" ? `<button class="rbtn ok" type="button" data-ract="done" data-k="${k}">Tandakan selesai</button>` : ""}
+          <button class="rbtn" type="button" data-ract="edit" data-k="${k}">Edit</button>
+          <button class="rbtn del" type="button" data-ract="del" data-k="${k}" aria-label="Batal relief ${esc(r.kelas || "")}">Batal</button>
+        </div>
+      </article>`;
+    }).join("");
+  }).join("");
 }
-$("#reliefList").addEventListener("click", async e => {
-  const btn = e.target.closest(".relief-del"); if (!btn) return;
-  const r = (DATA.relief || [])[+btn.dataset.i]; if (!r) return;
-  if (!confirm(`Batalkan relief ${r.kelas || ""} (${r.tarikh || ""} ${r.masa || ""})?
-Rekod akan dipadam.`)) return;
-  btn.disabled = true;
-  const same = x => (r.localId && x.localId === r.localId) || x === r;
-  try {
-    if (LIVE) {
-      const queued = readList(RELIEF_QUEUE).some(x => r.localId && x.localId === r.localId);
-      writeList(RELIEF_QUEUE, readList(RELIEF_QUEUE).filter(x => !same(x)));   // buang dari barisan sinkron
-      if (!queued || r._row) await deleteReliefFromSheet(r);                    // rekod sudah ada dalam Sheet
-      else if (r.localId) await deleteReliefFromSheet(r).catch(() => {});       // mungkin sudah tersimpan sebahagian
+
+/* Kemas kini relief sedia ada (edit / tandakan selesai) */
+async function updateRelief(r, changes){
+  const check = { kelas:r.kelas || "", tarikh:r.tarikh || "", masa:r.masa || "" };
+  if (LIVE) {
+    const queued = readList(RELIEF_QUEUE).some(x => r.localId && x.localId === r.localId);
+    if (queued) {                                   // belum masuk Sheet: kemas kini dalam barisan sahaja
+      writeList(RELIEF_QUEUE, readList(RELIEF_QUEUE).map(x => x.localId === r.localId ? { ...x, ...changes } : x));
     } else {
-      writeList(DEMO_RELIEF, readList(DEMO_RELIEF).filter(x => !same(x)));
+      const localId = r.localId || `relief-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;   // beri ID kepada rekod lama
+      await reliefApi("update", { ...changes, localId, _row:r._row || "", _check:check });
+      r.localId = localId;
     }
-    DATA.relief = DATA.relief.filter(x => !same(x));
-    renderRelief();
-    if (LIVE) loadData();
-  } catch(err) {
-    btn.disabled = false;
-    $("#alert").innerHTML = `<b>Gagal membatalkan relief.</b> ${esc(err.message || err)}`;
-    $("#alert").hidden = false;
+  } else {
+    writeList(DEMO_RELIEF, readList(DEMO_RELIEF).map(x => x.localId === r.localId ? { ...x, ...changes } : x));
   }
+  Object.assign(r, changes);
+  renderAll();
+  if (LIVE) loadData();
+}
+
+async function commitDeleteRelief(r){
+  const k = reliefKey(r);
+  const same = x => (r.localId && x.localId === r.localId) || reliefKey(x) === k;
+  if (LIVE) {
+    const queued = readList(RELIEF_QUEUE).some(x => r.localId && x.localId === r.localId);
+    writeList(RELIEF_QUEUE, readList(RELIEF_QUEUE).filter(x => !same(x)));      // buang dari barisan sinkron
+    const row = { localId:r.localId || "", _row:r._row || "", _check:{ kelas:r.kelas || "", tarikh:r.tarikh || "", masa:r.masa || "" } };
+    if (!queued || r._row) await reliefApi("delete", row);                       // rekod sudah ada dalam Sheet
+    else if (r.localId) await reliefApi("delete", row).catch(() => {});          // mungkin sudah tersimpan sebahagian
+  } else {
+    writeList(DEMO_RELIEF, readList(DEMO_RELIEF).filter(x => !same(x)));
+  }
+  DATA.relief = DATA.relief.filter(x => !same(x));
+}
+
+$("#reliefList").addEventListener("click", async e => {
+  const btn = e.target.closest("button[data-ract]"); if (!btn) return;
+  const r = findRelief(btn.dataset.k); if (!r) return;
+  const act = btn.dataset.ract;
+  if (act === "edit") { openReliefModal(r); return; }
+  if (act === "del") { softDelete("r:" + reliefKey(r), "Relief " + (r.kelas || ""), () => commitDeleteRelief(r)); return; }
+  btn.disabled = true;                              // tandakan selesai
+  try { await updateRelief(r, { status:"Selesai" }); toast(`Relief ${r.kelas || ""} ditandakan selesai`, "ok"); }
+  catch(err) { btn.disabled = false; toast("Gagal mengemas kini: " + (err.message || err), "err"); }
 });
 
 $("#reliefForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const record = {
-    localId:`relief-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+  const fields = {
     tarikh:$("#reliefDate").value,
     masa:$("#reliefTime").value,
     kelas:$("#reliefClass").value.trim(),
@@ -996,11 +1229,27 @@ $("#reliefForm").addEventListener("submit", async e => {
     status:$("#reliefStatus").value,
     nota:$("#reliefNote").value.trim()
   };
-  if (!record.kelas || !record.guruTidakHadir) return;
+  if (!fields.kelas || !fields.guruTidakHadir) return;
   const submit = $("#reliefSubmit");
   submit.disabled = true;
   $("#reliefStatusText").className = "entry-status";
-  $("#reliefStatusText").textContent = LIVE ? "Menghantar ke Google Sheet…" : "Menambah pada dashboard…";
+  $("#reliefStatusText").textContent = LIVE ? "Menghantar ke Google Sheet…" : "Menyimpan…";
+
+  if (reliefEditing) {                              // ---- EDIT ----
+    try {
+      await updateRelief(reliefEditing, fields);
+      toast(LIVE ? "Perubahan relief disimpan ke Sheet" : "Perubahan relief disimpan", "ok");
+      closeReliefModal();
+    } catch(err) {
+      $("#reliefStatusText").className = "entry-status error";
+      $("#reliefStatusText").textContent = String(err.message || err);
+      toast("Gagal menyimpan perubahan: " + (err.message || err), "err");
+    }
+    submit.disabled = false;
+    return;
+  }
+
+  const record = { localId:`relief-${Date.now()}-${Math.random().toString(36).slice(2,8)}`, ...fields };
   if (LIVE) {
     const queue = readList(RELIEF_QUEUE); queue.push(record); writeList(RELIEF_QUEUE, queue);
     try {
@@ -1008,17 +1257,21 @@ $("#reliefForm").addEventListener("submit", async e => {
       writeList(RELIEF_QUEUE, readList(RELIEF_QUEUE).filter(r => r.localId !== record.localId));
       $("#reliefStatusText").className = "entry-status success";
       $("#reliefStatusText").textContent = "Berjaya disimpan dalam Google Sheet.";
-      setTimeout(() => { closeReliefModal(); loadData(); }, 600);
+      toast("Relief disimpan ke Google Sheet", "ok");
+      setTimeout(() => { closeReliefModal(); loadData(); }, 300);
     } catch(err) {
       $("#reliefStatusText").className = "entry-status error";
       $("#reliefStatusText").textContent = `${err.message || err} Rekod kekal untuk dicuba semula.`;
+      toast("Gagal menghantar relief. Rekod disimpan dan akan dicuba semula.", "err", { actionLabel: "Cuba lagi", onAction: syncQueuedTasks });
+      renderAll();
     }
   } else {
     const queue = readList(DEMO_RELIEF); queue.push(record); writeList(DEMO_RELIEF, queue);
     applyData(mergeLocalRelief(SAMPLE), false);
     $("#reliefStatusText").className = "entry-status success";
     $("#reliefStatusText").textContent = "Peringatan relief berjaya ditambah.";
-    setTimeout(closeReliefModal, 500);
+    toast("Relief ditambah", "ok");
+    setTimeout(closeReliefModal, 300);
   }
   submit.disabled = false;
 });
@@ -1064,7 +1317,8 @@ function dueText(t){
 /* ---------- KPI ---------- */
 let lastKpi = {};
 function renderKpis(){
-  const s = DATA.tugasan.map(statusOf);
+  if (isLoading()) { $("#kpis").innerHTML = Array(6).fill('<div class="sk sk-kpi"></div>').join(""); return; }
+  const s = tasksVis().map(statusOf);
   const n = k => s.filter(x => x===k).length;
   const total = s.length, siap = n("selesai"), lewat = n("lewat"), hari = n("hari");
   const on = DATA.pwa.filter(p => p.status==="online").length;
@@ -1101,8 +1355,35 @@ const FILTERS = [
 let filter = store.get("cc-filter","semua");
 if (!FILTERS.some(f => f.id===filter)) filter = "semua";
 
+const tasksVis = () => (DATA.tugasan || []).filter(t => !hiddenKeys.has("t:" + taskKey(t)));
+const isLoading = () => LIVE && !(DATA && DATA.loaded);
+const skLines = (n, w) => Array.from({ length: n }, (_, i) => `<div class="sk sk-line" style="width:${w ? w[i % w.length] : 90}%"></div>`).join("");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+let taskQuery = "", unitSel = "";
+
+/* Kemas kini pilihan <select> hanya jika senarai berubah (elak kehilangan fokus semasa memaparkan semula) */
+function syncSelect(sel, values, current){
+  const sig = values.join("\u0001");
+  if (sel.dataset.sig === sig) return;
+  sel.dataset.sig = sig;
+  const first = sel.options[0].outerHTML;
+  sel.innerHTML = first + values.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  sel.value = values.includes(current) ? current : "";
+}
+
 function renderTasks(){
-  const rows = DATA.tugasan.map(t => ({t, s:statusOf(t)}));
+  if (isLoading()) {
+    $("#chips").innerHTML = ""; $("#tcount").textContent = "";
+    $("#tbody").innerHTML = `<tr><td colspan="6">${skLines(5, [92, 78, 86, 70, 88])}</td></tr>`;
+    return;
+  }
+  const all = tasksVis();
+  const units = [...new Set(all.map(t => t.unit).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
+  if (unitSel && !units.includes(unitSel)) unitSel = "";
+  syncSelect($("#unitFilter"), units, unitSel);
+  const q = taskQuery.trim().toLowerCase();
+  const match = t => (!unitSel || t.unit === unitSel) && (!q || [t.tajuk, t.pic, t.unit].some(v => String(v || "").toLowerCase().includes(q)));
+  const rows = all.filter(match).map(t => ({t, s:statusOf(t)}));
   $("#chips").innerHTML = FILTERS.map(f => `
     <button type="button" class="chip" data-f="${f.id}" aria-pressed="${f.id===filter}">${f.lbl}<span class="n">${rows.filter(r=>f.f(r.s)).length}</span></button>`).join("");
   const fx = FILTERS.find(f => f.id===filter).f;
@@ -1111,14 +1392,58 @@ function renderTasks(){
   $("#tcount").textContent = `${list.length} dipaparkan`;
   $("#tbody").innerHTML = list.length ? list.map(({t,s}) => `
     <tr class="row st-${s}">
-      <td><div class="tt">${esc(t.tajuk)}${isPending(t) ? '<span class="pend" title="Belum disimpan ke Google Sheet; akan dicuba semula">BELUM SYNC</span>' : ""}</div><div class="tu">${esc(t.unit)}</div></td>
-      <td class="pic">${esc(t.pic)}</td>
-      <td class="due">${t.tarikh ? fmtDate(t.tarikh) : "—"}<small>${dueText(t)}</small></td>
-      <td><div class="prog"><div class="bar"><i style="width:${t.kemajuan}%"></i></div><span>${t.kemajuan}%</span></div></td>
-      <td><span class="pill">${ST[s].label}</span></td>
-      <td class="task-ops"><button type="button" data-act="edit" data-k="${taskKey(t)}">Edit</button><button type="button" class="del" data-act="del" data-k="${taskKey(t)}" aria-label="Padam tugasan">Padam</button></td>
-    </tr>`).join("") : `<tr><td colspan="6" class="empty">Tiada tugasan dalam kategori ini.</td></tr>`;
+      <td class="c-title"><div class="tt">${esc(t.tajuk)}${isPending(t) ? '<span class="pend" title="Belum disimpan ke Google Sheet; akan dicuba semula">BELUM SYNC</span>' : ""}</div><div class="tu">${esc(t.unit)}</div></td>
+      <td class="c-pic pic">${esc(t.pic)}</td>
+      <td class="c-due due">${t.tarikh ? fmtDate(t.tarikh) : "—"}<small>${dueText(t)}</small></td>
+      <td class="c-prog"><div class="prog"><div class="bar"><i style="width:${t.kemajuan}%"></i></div><span>${t.kemajuan}%</span></div></td>
+      <td class="c-pill"><span class="pill">${ST[s].label}</span></td>
+      <td class="c-ops task-ops"><button type="button" data-act="edit" data-k="${taskKey(t)}">Edit</button><button type="button" class="del" data-act="del" data-k="${taskKey(t)}" aria-label="Padam tugasan">Padam</button></td>
+    </tr>`).join("") : `<tr><td colspan="6" class="empty">${(q || unitSel) ? "Tiada tugasan sepadan dengan carian." : "Tiada tugasan dalam kategori ini."}</td></tr>`;
 }
+$("#taskSearch").addEventListener("input", e => { taskQuery = e.target.value; renderTasks(); });
+$("#unitFilter").addEventListener("change", e => { unitSel = e.target.value; renderTasks(); });
+
+/* ---------- Perlu perhatian sekarang ---------- */
+function jadualNow(){
+  const now = new Date(), nm = now.getHours() * 60 + now.getMinutes();
+  let cur = null, next = null;
+  (DATA.jadual || []).filter(e => e && !isNaN(toMin(e.mula))).forEach(e => {
+    const a = toMin(e.mula); let b = toMin(e.tamat); if (isNaN(b) || b <= a) b = a + 60;
+    if (nm >= a && nm < b) cur = cur || e;
+    else if (nm < a && (!next || a < toMin(next.mula))) next = e;
+  });
+  return { cur, next };
+}
+function renderFocus(){
+  const el = $("#focus");
+  if (isLoading()) { el.innerHTML = ""; return; }
+  const T = tasksVis();
+  const lewat = T.filter(t => statusOf(t) === "lewat"), hari = T.filter(t => statusOf(t) === "hari");
+  const todayStr = ymd(new Date());
+  const relief = (DATA.relief || []).filter(r => !hiddenKeys.has("r:" + reliefKey(r)) && reliefState(r) === "perlu" && String(r.tarikh || "") >= todayStr);
+  const list = (arr, fmt, n) => `<ul>${arr.slice(0, n).map(x => `<li>${fmt(x)}</li>`).join("")}</ul>${arr.length > n ? `<div class="more">+${arr.length - n} lagi</div>` : ""}`;
+  const taskFmt = t => `${esc(t.tajuk)}<small>${esc(t.pic || "—")} · ${esc(dueText(t))}</small>`;
+  const cards = [];
+  if (lewat.length) cards.push(`<div class="fcard crit" data-go="lewat" title="Klik untuk tapis"><h3>Lewat · ${lewat.length}</h3>${list(lewat, taskFmt, 3)}</div>`);
+  if (hari.length) cards.push(`<div class="fcard warn" data-go="hari" title="Klik untuk tapis"><h3>Tamat hari ini · ${hari.length}</h3>${list(hari, taskFmt, 3)}</div>`);
+  if (relief.length) cards.push(`<div class="fcard warn" data-go="relief"><h3>Relief belum ditugaskan · ${relief.length}</h3>${list(relief, r => `${esc(r.kelas || "-")}<small>${esc(reliefDayInfo(r.tarikh).label)} ${esc(r.masa || "")} · ${esc(r.guruTidakHadir || "")}</small>`, 3)}</div>`);
+  const ev = jadualNow();
+  if (ev.cur) cards.push(`<div class="fcard info" data-go="jadual"><h3>Sedang berlangsung</h3><ul><li>${esc(ev.cur.acara)}<small>${esc(ev.cur.mula)}–${esc(ev.cur.tamat || "")} · ${esc(ev.cur.lokasi || "")}</small></li></ul></div>`);
+  if (ev.next) cards.push(`<div class="fcard" data-go="jadual"><h3>Seterusnya</h3><ul><li>${esc(ev.next.acara)}<small>${esc(ev.next.mula)} · ${esc(ev.next.lokasi || "")}</small></li></ul></div>`);
+  if (!cards.length) cards.push(`<div class="fcard ok"><h3>Semua terkawal</h3><ul><li>Tiada tugasan lewat, relief tertunggak atau acara menunggu.</li></ul></div>`);
+  el.innerHTML = cards.join("");
+}
+function goPanel(p){
+  const el = document.querySelector(`.panel[data-p="${p}"]`); if (!el) return;
+  el.classList.remove("collapsed");
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("#focus").addEventListener("click", e => {
+  const c = e.target.closest("[data-go]"); if (!c) return;
+  const g = c.dataset.go;
+  if (g === "lewat" || g === "hari") { filter = g; store.set("cc-filter", g); taskQuery = ""; unitSel = ""; $("#taskSearch").value = ""; renderTasks(); goPanel("tugas"); }
+  else goPanel(g);
+});
 $("#chips").addEventListener("click", e => {
   const b = e.target.closest(".chip"); if (!b) return;
   filter = b.dataset.f; store.set("cc-filter", filter); renderTasks();
@@ -1139,17 +1464,24 @@ function msgHTML(m, isNew){
     <p>${esc(m.teks || m.mesej)}</p>
   </li>`;
 }
+let tgSel = "";
 function renderFeed(fresh, key){
-  $("#feed").innerHTML = feed.length
-    ? feed.map(m => msgHTML(m, fresh && key && fresh.has(key(m)))).join("")
-    : `<li class="empty">Belum ada mesej. Buka kumpulan di web.telegram.org (skrip Tampermonkey aktif) dan mesej akan muncul di sini dalam masa sekitar 1 minit.</li>`;
+  if (isLoading()) { $("#feed").innerHTML = `<li>${skLines(4, [85, 70, 90, 60])}</li>`; return; }
+  const groups = [...new Set(feed.map(m => m.kumpulan).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
+  if (tgSel && !groups.includes(tgSel)) tgSel = "";
+  syncSelect($("#tgFilter"), groups, tgSel);
+  const list = feed.filter(m => !tgSel || m.kumpulan === tgSel);
+  $("#feed").innerHTML = list.length
+    ? list.map(m => msgHTML(m, fresh && key && fresh.has(key(m)))).join("")
+    : `<li class="empty">${feed.length ? "Tiada mesej untuk kumpulan ini." : "Belum ada mesej. Buka kumpulan di web.telegram.org (skrip Tampermonkey aktif) dan mesej akan muncul di sini dalam masa sekitar 1 minit."}</li>`;
 }
+$("#tgFilter").addEventListener("change", e => { tgSel = e.target.value; renderFeed(); });
 let poolIdx = 0;
 function pushDemoMessage(){
   if (LIVE) return;
   const m = {...DEMO_POOL[poolIdx++ % DEMO_POOL.length], masa:new Date()};
   feed.unshift(m); feed = feed.slice(0,40); mesejBaru++;
-  $("#feed").insertAdjacentHTML("afterbegin", msgHTML(m,true));
+  if (!tgSel || m.kumpulan === tgSel) $("#feed").insertAdjacentHTML("afterbegin", msgHTML(m,true));
   const items = $("#feed").children; while (items.length > 40) items[items.length-1].remove();
   renderKpis();
 }
@@ -1157,22 +1489,39 @@ function pushDemoMessage(){
 /* ---------- PWA ---------- */
 const STL = { online:"ONLINE", semak:"SEMAK", luar:"LUAR TALIAN" };
 function initials(n){ return String(n || "?").replace(/^e-/i,"E ").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase(); }
+let pins = readList("cc-pins");   // aplikasi yang disematkan (nama)
+const favicon = u => `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(u)}`;
 function renderPwa(){
+  if (isLoading()) { $("#pcount").textContent = ""; $("#tiles").innerHTML = Array(4).fill('<div class="sk sk-tile"></div>').join(""); return; }
   $("#pcount").textContent = `${DATA.pwa.length} aplikasi`;
-  $("#tiles").innerHTML = DATA.pwa.map(p => { const ok = /^https?:\/\//i.test(p.pautan||""); return `
+  const list = [...DATA.pwa].sort((a, b) => pins.includes(b.nama) - pins.includes(a.nama));   // yang disematkan dahulu; susunan asal kekal
+  $("#tiles").innerHTML = list.map(p => {
+    const ok = /^https?:\/\//i.test(p.pautan || ""), pinned = pins.includes(p.nama);
+    return `<div class="tw">
     <a class="tile" href="${ok ? esc(p.pautan) : "#"}" ${ok ? 'target="_blank" rel="noopener"' : 'title="Pautan belum diisi atau tidak sah (mesti bermula https://)"'}>
       <span class="dot d-${p.status}">${STL[p.status]||""}</span>
-      <span class="ico">${esc(initials(p.nama))}</span>
+      <span class="ico">${esc(initials(p.nama))}${ok ? `<img src="${esc(favicon(p.pautan))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</span>
       <span class="nm">${esc(p.nama)}</span>
       <span class="cat">${esc(p.kategori)}</span>
-    </a>`; }).join("") + `<div class="tile add"><div><b>+</b>Tambah baris dalam tab "PWA"</div></div>`;
+    </a>
+    <button class="pin" type="button" data-pin="${esc(p.nama)}" aria-pressed="${pinned}" aria-label="${pinned ? "Nyahsemat" : "Sematkan"} ${esc(p.nama)}" title="${pinned ? "Nyahsemat" : "Sematkan di atas"}">${pinned ? "★" : "☆"}</button>
+    </div>`; }).join("") + `<div class="tile add"><div><b>+</b>Tambah baris dalam tab "PWA"</div></div>`;
 }
-$("#tiles").addEventListener("click", e => { const a = e.target.closest("a.tile"); if (a && a.getAttribute("href")==="#") e.preventDefault(); });
+$("#tiles").addEventListener("click", e => {
+  const pin = e.target.closest(".pin");
+  if (pin) {
+    const n = pin.dataset.pin;
+    pins = pins.includes(n) ? pins.filter(x => x !== n) : [...pins, n];
+    writeList("cc-pins", pins); renderPwa(); return;
+  }
+  const a = e.target.closest("a.tile"); if (a && a.getAttribute("href") === "#") e.preventDefault();
+});
 
 /* ---------- Jadual ---------- */
 function renderTimeline(){
   const now = new Date(), nm = now.getHours()*60 + now.getMinutes();
   $("#jdate").textContent = `${HARI[now.getDay()]}, ${fmtDate(now)}`;
+  if (isLoading()) { $("#tl").innerHTML = `<li>${skLines(4, [70, 85, 60, 80])}</li>`; return; }
   let nextMarked = false;
   const jadual = DATA.jadual.filter(e => e && !isNaN(toMin(e.mula)));   // abaikan baris tanpa masa mula yang sah
   if (!jadual.length){ $("#tl").innerHTML = `<li class="empty">Tiada acara untuk hari ini dalam tab "Jadual".</li>`; return; }
@@ -1209,16 +1558,20 @@ function cycle(){
   if (countdown <= 0){ countdown = refreshSec; LIVE ? loadData() : renderAll(); }
   $("#sync").textContent = `${countdown}s`;
 }
-function renderAll(){ renderKpis(); renderTasks(); renderTimeline(); renderRelief(); }
+function renderAll(){ renderKpis(); renderFocus(); renderTasks(); renderTimeline(); renderRelief(); }
 
 /* ---------- Tetingkap terapung Clock In/Out (boleh diseret, diubah saiz, dilipat) ---------- */
+/* Kedudukan & saiz disimpan berasingan untuk skrin kecil (HP) dan skrin besar (komputer). */
 (function(){
-  const W = 390, H = 844, HEAD = 34, KEY = "clockWin.v1";
+  const W = 390, H = 844, HEAD = 34, KEY = "clockWin.v2";
+  const mq = window.matchMedia("(max-width:700px)");
   const win = $("#clockWin"), fab = $("#clockFab"), head = $("#clockHead"), grip = $("#clockGrip");
   const frameWrap = win.querySelector(".clock-frame-wrap"), body = win.querySelector(".fw-body"), iframe = win.querySelector("iframe");
-  let st = { x: null, y: null, k: 0.6, open: false, fold: false };
-  try { Object.assign(st, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch(e){}
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} };
+  const keyNow = () => KEY + (mq.matches ? ".m" : ".d");
+  const defaults = () => ({ x: null, y: null, k: mq.matches ? 0.75 : 0.6, open: false, fold: false });
+  const load = () => { const s = defaults(); try { Object.assign(s, JSON.parse(localStorage.getItem(keyNow()) || "{}")); } catch(e){} return s; };
+  let st = load();
+  const save = () => { try { localStorage.setItem(keyNow(), JSON.stringify(st)); } catch(e){} };
   const maxK = () => Math.max(0.3, Math.min(1.5, (innerWidth - 12) / (W + 2), (innerHeight - HEAD - 70) / (H + 2)));
   function layout(){
     st.k = Math.min(maxK(), Math.max(0.3, st.k));
@@ -1228,7 +1581,10 @@ function renderAll(){ renderKpis(); renderTasks(); renderTimeline(); renderRelie
     win.classList.toggle("fold", st.fold);
     const w = bw + 2, h = HEAD + 2 + (st.fold ? 0 : bh);
     win.style.width = w + "px";
-    if (st.x == null) { st.x = innerWidth - w - 14; st.y = 70; }
+    if (st.x == null) {
+      if (mq.matches) { st.x = Math.round((innerWidth - w) / 2); st.y = innerHeight - h - 70; }   // HP: di tengah, di atas jalur pengumuman
+      else { st.x = innerWidth - w - 14; st.y = 70; }                                              // komputer: kanan atas
+    }
     st.x = Math.min(Math.max(0, st.x), Math.max(0, innerWidth - w));
     st.y = Math.min(Math.max(0, st.y), Math.max(0, innerHeight - h));
     win.style.left = st.x + "px"; win.style.top = st.y + "px";
@@ -1259,7 +1615,27 @@ function renderAll(){ renderKpis(); renderTasks(); renderTimeline(); renderRelie
   fab.addEventListener("click", () => setOpen(true));
   iframe.addEventListener("load", () => { $("#clockLoading").hidden = true; });
   window.addEventListener("resize", () => { if (st.open) layout(); });
+  mq.addEventListener("change", () => { st = load(); setOpen(!!st.open); });   // beralih antara HP dan komputer
   setOpen(!!st.open);
+})();
+
+/* ---------- Panel boleh dilipat (disimpan pada peranti) ---------- */
+(function(){
+  const KEY = "cc-collapsed";
+  const set = new Set(readList(KEY));
+  document.querySelectorAll(".panel[data-p]").forEach(p => {
+    const ph = p.querySelector(".ph"); if (!ph) return;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "fold-btn"; b.title = "Lipat / buka panel";
+    const sync = () => { const c = p.classList.contains("collapsed"); b.setAttribute("aria-expanded", String(!c)); b.setAttribute("aria-label", (c ? "Buka panel " : "Lipat panel ") + (ph.querySelector("h2") ? ph.querySelector("h2").firstChild.textContent.trim() : "")); };
+    if (set.has(p.dataset.p)) p.classList.add("collapsed");
+    b.addEventListener("click", () => {
+      p.classList.toggle("collapsed");
+      if (p.classList.contains("collapsed")) set.add(p.dataset.p); else set.delete(p.dataset.p);
+      writeList(KEY, [...set]); sync();
+    });
+    ph.appendChild(b); sync();
+  });
 })();
 
 /* ---------- Mod TV ---------- */

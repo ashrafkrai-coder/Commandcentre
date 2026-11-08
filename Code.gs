@@ -300,7 +300,7 @@ function normHeader_(h) {
   if (CANON[base]) return CANON[base];
   var w = h.split(/[^A-Za-z0-9]+/).filter(String);
   if (!w.length) return '';
-  if (w.length === 1) return w[0].charAt(0).toLowerCase() + w[0].slice(1);
+  if (w.length === 1) return /^[A-Z0-9]+$/.test(w[0]) ? w[0].toLowerCase() : w[0].charAt(0).toLowerCase() + w[0].slice(1);   // PIC -> pic
   return w[0].toLowerCase() + w.slice(1).map(function (x) { return x.charAt(0).toUpperCase() + x.slice(1).toLowerCase(); }).join('');
 }
 
