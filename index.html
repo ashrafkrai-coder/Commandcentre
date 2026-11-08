@@ -94,6 +94,10 @@ h1 span{color:var(--ice)}
 .relief-class{font:700 16px/1.2 var(--f-display); color:var(--warn)}
 .relief-card.done .relief-class{color:var(--ok)}
 .relief-meta{font:500 11px/1.4 var(--f-mono); color:var(--dim); margin-top:4px}
+.relief-actions{display:flex; align-items:center; gap:8px; flex:none}
+.relief-del{background:transparent; border:1px solid var(--line2); color:var(--dim); padding:5px 8px; font:600 10.5px/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; cursor:pointer}
+.relief-del:hover{border-color:var(--crit); color:var(--crit)}
+.relief-del:disabled{opacity:.5; cursor:wait}
 .relief-note{margin:6px 0 0; color:var(--fg)}
 .relief-empty{padding:12px 14px 18px; color:var(--dim); font:500 12px/1.5 var(--f-mono)}
 .clock-frame-wrap{position:relative; width:390px; height:844px; overflow:hidden; background:#dff3f7; transform-origin:0 0}
@@ -827,7 +831,7 @@ $("#reliefModal").addEventListener("click", e => { if (e.target === $("#reliefMo
 function renderRelief(){
   const list = DATA.relief || [];
   $("#reliefCount").textContent = `${list.length} rekod`;
-  $("#reliefList").innerHTML = list.length ? list.map(r => {
+  $("#reliefList").innerHTML = list.length ? list.map((r, i) => {
     const done = String(r.status || "").toLowerCase() === "selesai";
     const date = parseYMD(r.tarikh);
     const dateText = date ? fmtDate(date) : (r.tarikh || "Tarikh belum ditetapkan");
@@ -835,13 +839,54 @@ function renderRelief(){
     return `<article class="relief-card ${done ? "done":""}">
       <div class="relief-top">
         <div><div class="relief-class">${esc(r.kelas || "-")}</div><div class="relief-meta">${esc(dateText)} · ${esc(r.masa || "-")} · Guru tidak hadir: ${esc(r.guruTidakHadir || "-")}</div></div>
-        <span class="pill">${esc(r.status || "Perlu Relief")}</span>
+        <div class="relief-actions"><span class="pill">${esc(r.status || "Perlu Relief")}</span><button class="relief-del" type="button" data-i="${i}" aria-label="Batal relief ${esc(r.kelas || "")}">Batal</button></div>
       </div>
       <div class="relief-meta">${substitute}</div>
       ${r.nota ? `<p class="relief-note">${esc(r.nota)}</p>` : ""}
     </article>`;
   }).join("") : `<div class="relief-empty">Tiada kelas yang memerlukan relief.</div>`;
 }
+
+/* Batal / padam rekod relief yang sudah diisi */
+async function deleteReliefFromSheet(r){
+  const row = { localId:r.localId || "", _row:r._row || "", kelas:r.kelas || "", tarikh:r.tarikh || "", masa:r.masa || "" };
+  if (GAS) {
+    return await new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)
+        .saveDashboard({ action:"delete", sheet:"Relief", type:"relief", key:getKey(), row });
+    });
+  }
+  const params = new URLSearchParams({ api:"save", action:"delete", sheet:"Relief", type:"relief", key:getKey(), data:JSON.stringify(row) });
+  const response = await fetch(`${API_URL}?${params.toString()}`, { cache:"no-store" });
+  const result = await response.json().catch(() => ({ error:"Respons API tidak sah" }));
+  if (!response.ok || result.error) throw new Error(result.error || `Ralat HTTP ${response.status}`);
+  return result;
+}
+$("#reliefList").addEventListener("click", async e => {
+  const btn = e.target.closest(".relief-del"); if (!btn) return;
+  const r = (DATA.relief || [])[+btn.dataset.i]; if (!r) return;
+  if (!confirm(`Batalkan relief ${r.kelas || ""} (${r.tarikh || ""} ${r.masa || ""})?
+Rekod akan dipadam.`)) return;
+  btn.disabled = true;
+  const same = x => (r.localId && x.localId === r.localId) || x === r;
+  try {
+    if (LIVE) {
+      const queued = readList(RELIEF_QUEUE).some(x => r.localId && x.localId === r.localId);
+      writeList(RELIEF_QUEUE, readList(RELIEF_QUEUE).filter(x => !same(x)));   // buang dari barisan sinkron
+      if (!queued || r._row) await deleteReliefFromSheet(r);                    // rekod sudah ada dalam Sheet
+      else if (r.localId) await deleteReliefFromSheet(r).catch(() => {});       // mungkin sudah tersimpan sebahagian
+    } else {
+      writeList(DEMO_RELIEF, readList(DEMO_RELIEF).filter(x => !same(x)));
+    }
+    DATA.relief = DATA.relief.filter(x => !same(x));
+    renderRelief();
+    if (LIVE) loadData();
+  } catch(err) {
+    btn.disabled = false;
+    $("#alert").innerHTML = `<b>Gagal membatalkan relief.</b> ${esc(err.message || err)}`;
+    $("#alert").hidden = false;
+  }
+});
 
 $("#reliefForm").addEventListener("submit", async e => {
   e.preventDefault();

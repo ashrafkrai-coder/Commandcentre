@@ -37,6 +37,7 @@ function doGet(e) {
       var payload = {
         sheet: p.sheet,
         type: p.type,
+        action: p.action,
         key: p.key,
         row: JSON.parse(p.data || '{}')
       };
@@ -102,6 +103,7 @@ function saveDashboard(payload) {
   var name = payload.sheet;
   if (SHEETS_SAVE.indexOf(name) === -1) throw new Error('Tab tidak dibenarkan: ' + name);
   var row = payload.row || {};
+  if (payload.action === 'delete') return deleteRow_(name, row);
 
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -129,6 +131,42 @@ function saveDashboard(payload) {
     });
     sh.appendRow(out);
     return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* Padam rekod (batal relief). Cari ikut localId; jika tiada, guna nombor baris (_row)
+ * tetapi hanya jika kelas+tarikh+masa pada baris itu sepadan (elak padam baris salah). */
+function deleteRow_(name, row) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sh = SpreadsheetApp.getActive().getSheetByName(name);
+    if (!sh) throw new Error('Tab tidak dijumpai: ' + name);
+    if (sh.getLastRow() < 2) return { ok: true, deleted: 0 };
+    var head = headers_(sh);
+    var vals = sh.getRange(2, 1, sh.getLastRow() - 1, head.length).getValues();
+    function rec(i) {
+      var o = {};
+      head.forEach(function (k, c) { if (k) o[k] = fmtCell_(k, vals[i][c]); });
+      return o;
+    }
+    var target = -1, i;
+    if (row.localId) {
+      var cId = head.indexOf('localId');
+      if (cId >= 0) for (i = 0; i < vals.length; i++) if (String(vals[i][cId]) === String(row.localId)) { target = i; break; }
+    }
+    if (target < 0 && row._row) {
+      i = Number(row._row) - 2;
+      if (i >= 0 && i < vals.length) {
+        var r = rec(i);
+        if (String(r.kelas) === String(row.kelas) && String(r.tarikh) === String(row.tarikh) && String(r.masa) === String(row.masa)) target = i;
+      }
+    }
+    if (target < 0) return { ok: true, deleted: 0 };   // sudah tiada
+    sh.deleteRow(target + 2);
+    return { ok: true, deleted: 1 };
   } finally {
     lock.releaseLock();
   }
@@ -207,9 +245,9 @@ function readSheet_(name) {
   var head = headers_(sh);
   var vals = sh.getRange(2, 1, sh.getLastRow() - 1, head.length).getValues();
   var out = [];
-  vals.forEach(function (r) {
+  vals.forEach(function (r, idx) {
     if (r.every(function (c) { return c === '' || c === null; })) return;
-    var o = {};
+    var o = { _row: idx + 2 };
     head.forEach(function (k, i) { if (k) o[k] = fmtCell_(k, r[i]); });
     out.push(o);
   });
