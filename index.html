@@ -68,6 +68,40 @@ h1 span{color:var(--ice)}
 .sys .ok{color:var(--ok)} .sys .demo{color:var(--warn)}
 .btn{background:var(--panel2); border:1px solid var(--line2); padding:9px 14px; font:600 12px/1 var(--f-display); letter-spacing:.12em; text-transform:uppercase; cursor:pointer}
 .btn:hover{border-color:var(--ice); color:var(--ice)}
+.btn-primary{background:var(--ice-soft); border-color:var(--ice); color:var(--ice)}
+.task-actions{display:flex; align-items:center; gap:8px}
+.task-actions .btn{padding:7px 10px}
+
+.entry-modal{position:fixed; inset:0; z-index:70; display:grid; place-items:center; padding:16px; background:rgba(6,11,18,.92)}
+.entry-box{width:min(540px,100%); max-height:calc(100vh - 32px); overflow:auto; background:var(--panel); border:1px solid var(--line2); padding:20px}
+.entry-head{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:16px}
+.entry-head h2{margin-top:5px}
+.entry-close{border:0; background:transparent; color:var(--dim); font-size:26px; line-height:1; cursor:pointer}
+.entry-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.entry-field{display:flex; flex-direction:column; gap:5px}
+.entry-field.full{grid-column:1/-1}
+.entry-field label{font:500 10px/1 var(--f-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--dim)}
+.entry-field input,.entry-field select{width:100%; background:var(--bg); border:1px solid var(--line2); color:var(--fg); padding:10px; font:500 13px/1.2 var(--f-body)}
+.entry-field input:focus,.entry-field select:focus{border-color:var(--ice); outline:none}
+.entry-status{grid-column:1/-1; min-height:18px; margin:2px 0 0; font:500 12px/1.4 var(--f-mono); color:var(--dim)}
+.entry-status.error{color:var(--crit)}
+.entry-status.success{color:var(--ok)}
+.entry-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:14px}
+.relief-list{display:grid; gap:8px; padding:12px 14px}
+.relief-card{border:1px solid var(--line); border-left:3px solid var(--warn); background:var(--panel2); padding:10px 12px}
+.relief-card.done{border-left-color:var(--ok); opacity:.7}
+.relief-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px}
+.relief-class{font:700 16px/1.2 var(--f-display); color:var(--warn)}
+.relief-card.done .relief-class{color:var(--ok)}
+.relief-meta{font:500 11px/1.4 var(--f-mono); color:var(--dim); margin-top:4px}
+.relief-note{margin:6px 0 0; color:var(--fg)}
+.relief-empty{padding:12px 14px 18px; color:var(--dim); font:500 12px/1.5 var(--f-mono)}
+.clock-embed{display:flex; flex-direction:column; padding:14px; gap:10px}
+.clock-frame-wrap{position:relative; height:420px; overflow:hidden; border:1px solid var(--line2); background:white}
+.clock-frame-wrap iframe{width:100%; height:100%; border:0; background:white}
+.clock-frame-wrap.mobile-preview iframe{transform-origin:0 0}
+.clock-actions{display:flex; justify-content:flex-end}
+@media (max-width:520px){.entry-grid{grid-template-columns:1fr}.entry-field.full{grid-column:auto}}
 
 .alert{border:1px solid var(--crit); background:var(--crit-soft); color:var(--fg); padding:10px 14px; margin-bottom:16px; font:500 12.5px/1.4 var(--f-mono)}
 .alert b{color:var(--crit)}
@@ -259,7 +293,10 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
   <section class="panel" aria-labelledby="h-tugas">
     <div class="ph">
       <h2 id="h-tugas">Papan Tugasan <small id="tcount"></small></h2>
-      <div class="chips" id="chips"></div>
+      <div class="task-actions">
+        <div class="chips" id="chips"></div>
+        <button class="btn btn-primary" id="addTaskBtn" type="button">+ Tugasan</button>
+      </div>
     </div>
     <div class="tablewrap">
       <table>
@@ -282,12 +319,131 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
     <div class="pf">Sumber: <b>Tab "PWA"</b> (Nama, Pautan, Kategori, Aktif, Urutan) · status disemak setiap 10 minit</div>
   </section>
 
+  <section class="panel" aria-labelledby="h-relief">
+    <div class="ph">
+      <h2 id="h-relief">Peringatan Kelas Relief <small id="reliefCount"></small></h2>
+      <button class="btn btn-primary" id="addReliefBtn" type="button">+ Relief</button>
+    </div>
+    <div class="relief-list" id="reliefList" aria-live="polite"></div>
+    <div class="pf">Sumber: <b>Tab "Relief"</b> dalam Google Sheet · kelas yang memerlukan guru ganti</div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-clock">
+    <div class="ph">
+      <h2 id="h-clock">Clock In/Out Geolocation</h2>
+      <a class="btn btn-primary" href="https://sekolahdigit.com/clock-in-out/geolocation" target="_blank" rel="noopener">Buka Penuh</a>
+    </div>
+    <div class="clock-embed">
+      <div class="clock-frame-wrap">
+        <iframe
+          src="https://sekolahdigit.com/clock-in-out/geolocation"
+          title="Clock In/Out Geolocation Sekolah Digit"
+          loading="lazy"
+          allow="geolocation; camera"
+          referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      </div>
+    </div>
+    <div class="pf">Paparan terbenam · akses lokasi memerlukan <b>HTTPS</b> dan kebenaran pengguna</div>
+  </section>
+
   <section class="panel" aria-labelledby="h-jd">
     <div class="ph"><h2 id="h-jd">Jadual Hari Ini</h2><small class="mono" style="color:var(--dim)" id="jdate"></small></div>
     <ol class="tl" id="tl"></ol>
     <div class="pf">Sumber: <b>Tab "Jadual"</b></div>
   </section>
 </main>
+
+<div class="entry-modal" id="entryModal" hidden>
+  <form class="entry-box" id="entryForm">
+    <div class="entry-head">
+      <div><div class="eyebrow">Data Tugasan</div><h2>Tambah Tugasan Baru</h2></div>
+      <button class="entry-close" id="entryClose" type="button" aria-label="Tutup">&times;</button>
+    </div>
+
+    <div class="entry-modal" id="reliefModal" hidden>
+      <form class="entry-box" id="reliefForm">
+        <div class="entry-head">
+          <div><div class="eyebrow">Peringatan Guru Ganti</div><h2>Kelas Perlukan Relief</h2></div>
+          <button class="entry-close" id="reliefClose" type="button" aria-label="Tutup">&times;</button>
+        </div>
+        <div class="entry-grid">
+          <div class="entry-field">
+            <label for="reliefDate">Tarikh</label>
+            <input id="reliefDate" required type="date">
+          </div>
+          <div class="entry-field">
+            <label for="reliefTime">Masa</label>
+            <input id="reliefTime" required type="time">
+          </div>
+          <div class="entry-field">
+            <label for="reliefClass">Kelas</label>
+            <input id="reliefClass" required maxlength="30" placeholder="Contoh: 4 Amanah">
+          </div>
+          <div class="entry-field">
+            <label for="reliefTeacher">Guru tidak hadir</label>
+            <input id="reliefTeacher" required maxlength="80" placeholder="Nama guru">
+          </div>
+          <div class="entry-field">
+            <label for="reliefSubstitute">Guru relief</label>
+            <input id="reliefSubstitute" maxlength="80" placeholder="Belum ditetapkan">
+          </div>
+          <div class="entry-field">
+            <label for="reliefStatus">Status</label>
+            <select id="reliefStatus">
+              <option selected>Perlu Relief</option>
+              <option>Sudah Ditugaskan</option>
+              <option>Selesai</option>
+            </select>
+          </div>
+          <div class="entry-field full">
+            <label for="reliefNote">Nota</label>
+            <input id="reliefNote" maxlength="160" placeholder="Contoh: Tinggal tugasan Bab 3">
+          </div>
+          <p class="entry-status" id="reliefStatusText" aria-live="polite"></p>
+        </div>
+        <div class="entry-actions">
+          <button class="btn" id="reliefCancel" type="button">Batal</button>
+          <button class="btn btn-primary" id="reliefSubmit" type="submit">Simpan &amp; Sync Sheet</button>
+        </div>
+      </form>
+    </div>
+    <div class="entry-grid">
+      <div class="entry-field full">
+        <label for="taskTitle">Tajuk tugasan</label>
+        <input id="taskTitle" name="tajuk" required maxlength="160" placeholder="Contoh: Sahkan laporan PBD">
+      </div>
+      <div class="entry-field">
+        <label for="taskPic">Pegawai bertanggungjawab</label>
+        <input id="taskPic" name="pic" required maxlength="80" placeholder="Nama PIC">
+      </div>
+      <div class="entry-field">
+        <label for="taskUnit">Unit</label>
+        <input id="taskUnit" name="unit" required maxlength="80" placeholder="Kurikulum / HEM / ICT">
+      </div>
+      <div class="entry-field">
+        <label for="taskDue">Tarikh akhir</label>
+        <input id="taskDue" name="akhir" required type="date">
+      </div>
+      <div class="entry-field">
+        <label for="taskStatus">Status</label>
+        <select id="taskStatus" name="status">
+          <option>Belum Mula</option>
+          <option selected>Dalam Proses</option>
+          <option>Selesai</option>
+        </select>
+      </div>
+      <div class="entry-field full">
+        <label for="taskProgress">Kemajuan: <span id="progressValue" class="mono">0%</span></label>
+        <input id="taskProgress" name="kemajuan" type="range" min="0" max="100" step="5" value="0">
+      </div>
+      <p class="entry-status" id="entryStatus" aria-live="polite"></p>
+    </div>
+    <div class="entry-actions">
+      <button class="btn" id="entryCancel" type="button">Batal</button>
+      <button class="btn btn-primary" id="entrySubmit" type="submit">Simpan &amp; Sync Sheet</button>
+    </div>
+  </form>
+</div>
 
 <div class="gate" id="gate" hidden>
   <form class="gate-box" id="gateForm" autocomplete="off">
@@ -315,6 +471,10 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
    ========================================================= */
 const SAMPLE = {
   sekolah: "SMK Taman Medan",
+  relief: [
+    { tarikh:"2026-11-08", masa:"08:00", kelas:"4 Amanah", guruTidakHadir:"Pn. Aisyah", guruRelief:"En. Hafiz", status:"Sudah Ditugaskan", nota:"Lengkapkan latihan Bab 3" },
+    { tarikh:"2026-11-08", masa:"10:30", kelas:"5 Bestari", guruTidakHadir:"Cik Nadia", guruRelief:"", status:"Perlu Relief", nota:"Ketua kelas ambil buku kerja di bilik guru" },
+  ],
   tugasan: [
     { tajuk:"Laporan Pentaksiran Bilik Darjah (PBD) T4", pic:"Pn. Aisyah", unit:"Kurikulum", akhir:-2, status:"Dalam Proses", kemajuan:70 },
     { tajuk:"Kemas kini data murid APDM", pic:"En. Hafiz", unit:"HEM", akhir:-1, status:"Dalam Proses", kemajuan:45 },
@@ -385,6 +545,11 @@ const store = {
   get(k,def){ try{ return localStorage.getItem(k) ?? def; }catch(e){ return def; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 };
+const readList = key => {
+  try { const value = JSON.parse(store.get(key, "[]")); return Array.isArray(value) ? value : []; }
+  catch(e){ return []; }
+};
+const writeList = (key, value) => store.set(key, JSON.stringify(value));
 
 /* ---------- Keadaan & sumber data ---------- */
 const GAS = typeof google !== "undefined" && google.script && google.script.run;   // dalam Apps Script
@@ -398,6 +563,12 @@ const parseYMD = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s||""); retur
 
 function prepare(d){
   const T0 = today0();
+  d.tugasan = d.tugasan || [];
+  d.pwa = d.pwa || [];
+  d.relief = d.relief || [];
+  d.telegram = d.telegram || [];
+  d.jadual = d.jadual || [];
+  d.pengumuman = d.pengumuman || [];
   d.tugasan.forEach(t => t.tarikh = typeof t.akhir === "number" ? addDays(T0, t.akhir) : parseYMD(t.akhir));
   d.pwa.forEach(p => { if (!p.status) p.status = "na"; });
   return d;
@@ -408,6 +579,8 @@ function setFeed(list){
   mesejBaru = feed.filter(m => m.masa >= t0).length;
 }
 function applyData(d, live){
+  d = mergeLocalTasks(d);
+  d = mergeLocalRelief(d);
   DATA = prepare(d); DATA.loaded = true;
   refreshSec = d.refresh || 30;
   $("#school").textContent = d.sekolah;
@@ -438,11 +611,251 @@ function loadData(){
     if (!d || d.error) return fail(d ? d.error : "Tiada data");
     store.set("cc-last", JSON.stringify(d));
     applyData(d, true);
+    syncQueuedTasks();
   };
   if (GAS) google.script.run.withSuccessHandler(ok).withFailureHandler(fail).dataDashboard(key);
   else fetch(`${API_URL}?api=data&key=${encodeURIComponent(key)}`, { cache: "no-store" })
     .then(r => r.json()).then(ok).catch(fail);
 }
+
+/* ---------- Entri tugasan & sinkron Google Sheet ---------- */
+const TASK_QUEUE = "cc-task-queue";
+const DEMO_TASKS = "cc-demo-tasks";
+const RELIEF_QUEUE = "cc-relief-queue";
+const DEMO_RELIEF = "cc-demo-relief";
+
+function addLocalTask(task){
+  if (LIVE) {
+    const queue = readList(TASK_QUEUE);
+    queue.push(task);
+    writeList(TASK_QUEUE, queue);
+  } else {
+    const demo = readList(DEMO_TASKS);
+    demo.push(task);
+    writeList(DEMO_TASKS, demo);
+  }
+}
+
+function mergeLocalTasks(d){
+  const local = LIVE ? readList(TASK_QUEUE) : readList(DEMO_TASKS);
+  if (!local.length) return d;
+  const known = new Set(d.tugasan.map(t => t.localId || ""));
+  return {...d, tugasan:[...d.tugasan, ...local.filter(t => !known.has(t.localId))]};
+}
+
+function mergeLocalRelief(d){
+  const local = LIVE ? readList(RELIEF_QUEUE) : readList(DEMO_RELIEF);
+  if (!local.length) return d;
+  const known = new Set((d.relief || []).map(r => r.localId || ""));
+  return {...d, relief:[...local.filter(r => !known.has(r.localId)), ...(d.relief || [])]};
+}
+
+async function saveTaskToSheet(task){
+  const payload = {
+    sheet: "Tugasan",
+    type: "tugasan",
+    key: getKey(),
+    row: task,
+  };
+
+  if (GAS) {
+    return await new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(reject)
+        .saveDashboard(payload);
+    });
+  }
+
+  const params = new URLSearchParams({
+    api: "save",
+    action: "append",
+    sheet: "Tugasan",
+    key: getKey(),
+    type: "tugasan",
+    data: JSON.stringify(task),
+  });
+  const response = await fetch(`${API_URL}?${params.toString()}`, { cache: "no-store" });
+  const result = await response.json().catch(() => ({ error: "Respons API tidak sah" }));
+  if (!response.ok || result.error) throw new Error(result.error || `Ralat HTTP ${response.status}`);
+  return result;
+}
+
+async function syncQueuedTasks(){
+  if (!LIVE || !getKey()) return;
+  await syncQueue(TASK_QUEUE, t => saveTaskToSheet(t), () => loadData());
+  await syncQueue(RELIEF_QUEUE, r => saveReliefToSheet(r), () => loadData());
+}
+
+async function syncQueue(storageKey, saveItem, after){
+  const queue = readList(storageKey);
+  if (!queue.length) return;
+  const failed = [];
+  for (const task of queue) {
+    try {
+      await saveItem(task);
+    } catch(e) {
+      failed.push(task);
+    }
+  }
+  writeList(storageKey, failed);
+  if (!failed.length && after) after();
+}
+
+function openEntry(){
+  if (LIVE && !getKey()) { askKey(); return; }
+  $("#entryStatus").textContent = "";
+  $("#entryStatus").className = "entry-status";
+  $("#taskDue").value = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+  $("#entryModal").hidden = false;
+  setTimeout(() => $("#taskTitle").focus(), 30);
+}
+function closeEntry(){
+  $("#entryModal").hidden = true;
+  $("#entryForm").reset();
+  $("#taskProgress").value = 0;
+  $("#progressValue").textContent = "0%";
+}
+
+$("#addTaskBtn").addEventListener("click", openEntry);
+$("#entryClose").addEventListener("click", closeEntry);
+$("#entryCancel").addEventListener("click", closeEntry);
+$("#entryModal").addEventListener("click", e => { if (e.target === $("#entryModal")) closeEntry(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#entryModal").hidden) closeEntry(); });
+$("#taskProgress").addEventListener("input", e => $("#progressValue").textContent = `${e.target.value}%`);
+
+$("#entryForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const title = $("#taskTitle").value.trim(), pic = $("#taskPic").value.trim(), unit = $("#taskUnit").value.trim();
+  const due = $("#taskDue").value;
+  if (!title || !pic || !unit || !due) return;
+  const task = {
+    localId: `task-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+    tajuk: title,
+    pic,
+    unit,
+    akhir: due,
+    status: $("#taskStatus").value,
+    kemajuan: Number($("#taskProgress").value),
+  };
+  const submit = $("#entrySubmit");
+  submit.disabled = true;
+  $("#entryStatus").className = "entry-status";
+  $("#entryStatus").textContent = LIVE ? "Menghantar ke Google Sheet…" : "Menambah pada dashboard…";
+
+  addLocalTask(task);
+  if (LIVE) {
+    try {
+      await saveTaskToSheet(task);
+      const queue = readList(TASK_QUEUE).filter(t => t.localId !== task.localId);
+      writeList(TASK_QUEUE, queue);
+      $("#entryStatus").className = "entry-status success";
+      $("#entryStatus").textContent = "Berjaya disimpan dalam Google Sheet.";
+      setTimeout(() => { closeEntry(); loadData(); }, 600);
+    } catch(err) {
+      $("#entryStatus").className = "entry-status error";
+      $("#entryStatus").textContent = `${err.message || err} Rekod kekal dalam barisan sinkron dan akan dicuba semula.`;
+    }
+  } else {
+    const d = mergeLocalTasks(SAMPLE);
+    applyData(d, false);
+    $("#entryStatus").className = "entry-status success";
+    $("#entryStatus").textContent = "Tugasan berjaya ditambah.";
+    setTimeout(closeEntry, 500);
+  }
+  submit.disabled = false;
+});
+
+async function saveReliefToSheet(record){
+  const payload = { sheet: "Relief", type: "relief", key: getKey(), row: record };
+  if (GAS) {
+    return await new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).saveDashboard(payload);
+    });
+  }
+  const params = new URLSearchParams({
+    api:"save", action:"append", sheet:"Relief", key:getKey(), type:"relief", data:JSON.stringify(record)
+  });
+  const response = await fetch(`${API_URL}?${params.toString()}`, { cache:"no-store" });
+  const result = await response.json().catch(() => ({ error:"Respons API tidak sah" }));
+  if (!response.ok || result.error) throw new Error(result.error || `Ralat HTTP ${response.status}`);
+  return result;
+}
+
+function openReliefModal(){
+  if (LIVE && !getKey()) { askKey(); return; }
+  $("#reliefStatusText").textContent = "";
+  $("#reliefStatusText").className = "entry-status";
+  $("#reliefDate").value = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+  $("#reliefModal").hidden = false;
+  setTimeout(() => $("#reliefClass").focus(), 30);
+}
+function closeReliefModal(){
+  $("#reliefModal").hidden = true;
+  $("#reliefForm").reset();
+}
+$("#addReliefBtn").addEventListener("click", openReliefModal);
+$("#reliefClose").addEventListener("click", closeReliefModal);
+$("#reliefCancel").addEventListener("click", closeReliefModal);
+$("#reliefModal").addEventListener("click", e => { if (e.target === $("#reliefModal")) closeReliefModal(); });
+
+function renderRelief(){
+  const list = DATA.relief || [];
+  $("#reliefCount").textContent = `${list.length} rekod`;
+  $("#reliefList").innerHTML = list.length ? list.map(r => {
+    const done = String(r.status || "").toLowerCase() === "selesai";
+    const date = parseYMD(r.tarikh);
+    const dateText = date ? fmtDate(date) : (r.tarikh || "Tarikh belum ditetapkan");
+    const substitute = r.guruRelief ? `Guru relief: ${esc(r.guruRelief)}` : "Guru relief belum ditugaskan";
+    return `<article class="relief-card ${done ? "done":""}">
+      <div class="relief-top">
+        <div><div class="relief-class">${esc(r.kelas || "-")}</div><div class="relief-meta">${esc(dateText)} · ${esc(r.masa || "-")} · Guru tidak hadir: ${esc(r.guruTidakHadir || "-")}</div></div>
+        <span class="pill">${esc(r.status || "Perlu Relief")}</span>
+      </div>
+      <div class="relief-meta">${substitute}</div>
+      ${r.nota ? `<p class="relief-note">${esc(r.nota)}</p>` : ""}
+    </article>`;
+  }).join("") : `<div class="relief-empty">Tiada kelas yang memerlukan relief.</div>`;
+}
+
+$("#reliefForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const record = {
+    localId:`relief-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+    tarikh:$("#reliefDate").value,
+    masa:$("#reliefTime").value,
+    kelas:$("#reliefClass").value.trim(),
+    guruTidakHadir:$("#reliefTeacher").value.trim(),
+    guruRelief:$("#reliefSubstitute").value.trim(),
+    status:$("#reliefStatus").value,
+    nota:$("#reliefNote").value.trim()
+  };
+  if (!record.kelas || !record.guruTidakHadir) return;
+  const submit = $("#reliefSubmit");
+  submit.disabled = true;
+  $("#reliefStatusText").className = "entry-status";
+  $("#reliefStatusText").textContent = LIVE ? "Menghantar ke Google Sheet…" : "Menambah pada dashboard…";
+  if (LIVE) {
+    const queue = readList(RELIEF_QUEUE); queue.push(record); writeList(RELIEF_QUEUE, queue);
+    try {
+      await saveReliefToSheet(record);
+      writeList(RELIEF_QUEUE, readList(RELIEF_QUEUE).filter(r => r.localId !== record.localId));
+      $("#reliefStatusText").className = "entry-status success";
+      $("#reliefStatusText").textContent = "Berjaya disimpan dalam Google Sheet.";
+      setTimeout(() => { closeReliefModal(); loadData(); }, 600);
+    } catch(err) {
+      $("#reliefStatusText").className = "entry-status error";
+      $("#reliefStatusText").textContent = `${err.message || err} Rekod kekal untuk dicuba semula.`;
+    }
+  } else {
+    const queue = readList(DEMO_RELIEF); queue.push(record); writeList(DEMO_RELIEF, queue);
+    applyData(mergeLocalRelief(SAMPLE), false);
+    $("#reliefStatusText").className = "entry-status success";
+    $("#reliefStatusText").textContent = "Peringatan relief berjaya ditambah.";
+    setTimeout(closeReliefModal, 500);
+  }
+  submit.disabled = false;
+});
 
 /* ---------- Pintu kunci akses ---------- */
 function askKey(err){
@@ -628,7 +1041,7 @@ function cycle(){
   if (countdown <= 0){ countdown = refreshSec; LIVE ? loadData() : renderAll(); }
   $("#sync").textContent = `${countdown}s`;
 }
-function renderAll(){ renderKpis(); renderTasks(); renderTimeline(); }
+function renderAll(){ renderKpis(); renderTasks(); renderTimeline(); renderRelief(); }
 
 /* ---------- Mod TV ---------- */
 let wakeLock = null;
@@ -641,7 +1054,7 @@ $("#tvBtn").addEventListener("click", async () => {
 });
 
 /* ---------- Mula ---------- */
-if (LIVE) { $("#mode").textContent = "MEMUATKAN…"; DATA = prepare({tugasan:[], pwa:[], jadual:[], pengumuman:[], telegram:[]}); renderAll(); renderFeed(); renderPwa(); renderTicker(); loadData(); }
+if (LIVE) { $("#mode").textContent = "MEMUATKAN…"; DATA = prepare({tugasan:[], pwa:[], relief:[], jadual:[], pengumuman:[], telegram:[]}); renderAll(); renderFeed(); renderPwa(); renderTicker(); loadData(); }
 else applyData(SAMPLE, false);
 tickClock();
 setInterval(tickClock, 1000);
