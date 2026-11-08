@@ -96,14 +96,24 @@ h1 span{color:var(--ice)}
 .relief-meta{font:500 11px/1.4 var(--f-mono); color:var(--dim); margin-top:4px}
 .relief-note{margin:6px 0 0; color:var(--fg)}
 .relief-empty{padding:12px 14px 18px; color:var(--dim); font:500 12px/1.5 var(--f-mono)}
-.clock-embed{display:flex; flex-direction:column; padding:14px; gap:10px}
-.clock-frame-wrap{position:relative; height:520px; overflow:auto; overflow-x:auto; overscroll-behavior:contain; border:1px solid var(--line2); background:#dff3f7}
-.clock-frame-wrap iframe{display:block; width:390px; height:844px; min-width:390px; border:0; background:white}
-.clock-scroll{width:390px; height:844px; margin:0 auto}
+.clock-frame-wrap{position:relative; width:390px; height:844px; overflow:hidden; background:#dff3f7; transform-origin:0 0}
+.clock-frame-wrap iframe{display:block; width:390px; height:844px; border:0; background:white}
+.clock-scroll{width:390px; height:844px}
+.fab{position:fixed; right:max(14px, env(safe-area-inset-right,0px)); bottom:calc(64px + env(safe-area-inset-bottom,0px)); z-index:44; background:var(--ice); color:var(--bg); border:0; padding:11px 14px; font:700 12px/1 var(--f-display); letter-spacing:.1em; text-transform:uppercase; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.fab[hidden]{display:none}
+.fw{position:fixed; z-index:45; left:0; top:0; display:flex; flex-direction:column; background:var(--panel); border:1px solid var(--ice); box-shadow:0 10px 40px rgba(0,0,0,.65)}
+.fw-head{display:flex; align-items:center; justify-content:space-between; gap:8px; height:34px; padding:0 4px 0 10px; background:var(--panel2); border-bottom:1px solid var(--line2); cursor:grab; touch-action:none; user-select:none}
+.fw-head:active{cursor:grabbing}
+.fw-title{font:600 12px/1 var(--f-display); letter-spacing:.12em; text-transform:uppercase; color:var(--ice); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.fw-btns{display:flex; align-items:center; gap:2px; flex:none}
+.fw-btns button,.fw-btns a{width:28px; height:28px; display:grid; place-items:center; background:transparent; border:0; color:var(--fg); text-decoration:none; font-size:16px; line-height:1; cursor:pointer}
+.fw-btns button:hover,.fw-btns a:hover{color:var(--ice); background:var(--ice-soft)}
+.fw-body{position:relative; overflow:hidden; flex:none}
+.fw.fold .fw-body,.fw.fold .fw-grip{display:none}
+.fw-grip{position:absolute; right:0; bottom:0; width:22px; height:22px; cursor:nwse-resize; touch-action:none; z-index:2; background:linear-gradient(135deg, transparent 50%, var(--ice) 50% 58%, transparent 58% 70%, var(--ice) 70% 78%, transparent 78%)}
+.fw.dragging iframe,.fw.resizing iframe{pointer-events:none}
 .clock-loading{position:absolute; inset:0; display:grid; place-items:center; color:#36566a; font:600 12px/1.4 var(--f-mono)}
-.clock-frame-wrap.mobile-preview iframe{transform-origin:0 0}
-.clock-actions{display:flex; justify-content:flex-end}
-@media (max-width:520px){.entry-grid{grid-template-columns:1fr}.entry-field.full{grid-column:auto}.clock-frame-wrap{height:520px}}
+@media (max-width:520px){.entry-grid{grid-template-columns:1fr}.entry-field.full{grid-column:auto}}
 
 .alert{border:1px solid var(--crit); background:var(--crit-soft); color:var(--fg); padding:10px 14px; margin-bottom:16px; font:500 12.5px/1.4 var(--f-mono)}
 .alert b{color:var(--crit)}
@@ -253,6 +263,12 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
 @media (max-width:1200px){ .kpis{grid-template-columns:repeat(3, minmax(0,1fr))} }
 @media (max-width:900px){ .grid{grid-template-columns:minmax(0,1fr)} .tablewrap,.feed{max-height:none} }
 @media (max-width:520px){
+  body{padding-left:max(10px, env(safe-area-inset-left, 0px)); padding-right:max(10px, env(safe-area-inset-right, 0px))}
+  .tiles{grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; padding:10px}
+  .tile{padding:10px; min-height:88px}
+  .nm{font-size:13px; overflow-wrap:anywhere}
+  .ph{padding:10px}
+  .task-actions{flex-wrap:wrap}
   .kpis{grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px}
   .kpi .val{font-size:28px}
   h1{font-size:21px}
@@ -330,27 +346,6 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
     <div class="pf">Sumber: <b>Tab "Relief"</b> dalam Google Sheet · kelas yang memerlukan guru ganti</div>
   </section>
 
-  <section class="panel" aria-labelledby="h-clock">
-    <div class="ph">
-      <h2 id="h-clock">Clock In/Out Geolocation</h2>
-      <a class="btn btn-primary" href="https://sekolahdigit.com/clock-in-out/geolocation" target="_blank" rel="noopener">Buka Penuh</a>
-    </div>
-    <div class="clock-embed">
-      <div class="clock-frame-wrap">
-      <div class="clock-loading" id="clockLoading">Memuatkan paparan mobile…</div>
-      <div class="clock-scroll">
-      <iframe
-      src="https://sekolahdigit.com/clock-in-out/geolocation"
-          title="Clock In/Out Geolocation Sekolah Digit"
-          loading="lazy"
-          allow="geolocation; camera"
-          referrerpolicy="strict-origin-when-cross-origin"></iframe>
-        </div>
-      </div>
-    </div>
-    <div class="pf">Paparan terbenam · akses lokasi memerlukan <b>HTTPS</b> dan kebenaran pengguna</div>
-  </section>
-
   <section class="panel" aria-labelledby="h-jd">
     <div class="ph"><h2 id="h-jd">Jadual Hari Ini</h2><small class="mono" style="color:var(--dim)" id="jdate"></small></div>
     <ol class="tl" id="tl"></ol>
@@ -358,12 +353,74 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
   </section>
 </main>
 
+<button class="fab" id="clockFab" type="button" aria-controls="clockWin">&#9201; Clock In/Out</button>
+<div class="fw" id="clockWin" role="dialog" aria-label="Clock In/Out Geolocation" hidden>
+  <div class="fw-head" id="clockHead">
+    <span class="fw-title">Clock In/Out</span>
+    <span class="fw-btns">
+      <button type="button" id="clockSmaller" aria-label="Kecilkan">&minus;</button>
+      <button type="button" id="clockBigger" aria-label="Besarkan">+</button>
+      <button type="button" id="clockFold" aria-label="Lipat">&#9645;</button>
+      <a href="https://sekolahdigit.com/clock-in-out/geolocation" target="_blank" rel="noopener" aria-label="Buka penuh">&#8599;</a>
+      <button type="button" id="clockClose" aria-label="Tutup">&times;</button>
+    </span>
+  </div>
+  <div class="fw-body">
+    <div class="clock-frame-wrap">
+      <div class="clock-loading" id="clockLoading">Memuatkan paparan mobile…</div>
+      <div class="clock-scroll">
+        <iframe data-src="https://sekolahdigit.com/clock-in-out/geolocation" title="Clock In/Out Geolocation Sekolah Digit"
+          allow="geolocation; camera" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      </div>
+    </div>
+  </div>
+  <div class="fw-grip" id="clockGrip" aria-label="Seret untuk ubah saiz"></div>
+</div>
+
 <div class="entry-modal" id="entryModal" hidden>
   <form class="entry-box" id="entryForm">
     <div class="entry-head">
       <div><div class="eyebrow">Data Tugasan</div><h2>Tambah Tugasan Baru</h2></div>
       <button class="entry-close" id="entryClose" type="button" aria-label="Tutup">&times;</button>
     </div>
+
+    <div class="entry-grid">
+      <div class="entry-field full">
+        <label for="taskTitle">Tajuk tugasan</label>
+        <input id="taskTitle" name="tajuk" required maxlength="160" placeholder="Contoh: Sahkan laporan PBD">
+      </div>
+      <div class="entry-field">
+        <label for="taskPic">Pegawai bertanggungjawab</label>
+        <input id="taskPic" name="pic" required maxlength="80" placeholder="Nama PIC">
+      </div>
+      <div class="entry-field">
+        <label for="taskUnit">Unit</label>
+        <input id="taskUnit" name="unit" required maxlength="80" placeholder="Kurikulum / HEM / ICT">
+      </div>
+      <div class="entry-field">
+        <label for="taskDue">Tarikh akhir</label>
+        <input id="taskDue" name="akhir" required type="date">
+      </div>
+      <div class="entry-field">
+        <label for="taskStatus">Status</label>
+        <select id="taskStatus" name="status">
+          <option>Belum Mula</option>
+          <option selected>Dalam Proses</option>
+          <option>Selesai</option>
+        </select>
+      </div>
+      <div class="entry-field full">
+        <label for="taskProgress">Kemajuan: <span id="progressValue" class="mono">0%</span></label>
+        <input id="taskProgress" name="kemajuan" type="range" min="0" max="100" step="5" value="0">
+      </div>
+      <p class="entry-status" id="entryStatus" aria-live="polite"></p>
+    </div>
+    <div class="entry-actions">
+      <button class="btn" id="entryCancel" type="button">Batal</button>
+      <button class="btn btn-primary" id="entrySubmit" type="submit">Simpan &amp; Sync Sheet</button>
+    </div>
+  </form>
+</div>
 
     <div class="entry-modal" id="reliefModal" hidden>
       <form class="entry-box" id="reliefForm">
@@ -412,43 +469,6 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
         </div>
       </form>
     </div>
-    <div class="entry-grid">
-      <div class="entry-field full">
-        <label for="taskTitle">Tajuk tugasan</label>
-        <input id="taskTitle" name="tajuk" required maxlength="160" placeholder="Contoh: Sahkan laporan PBD">
-      </div>
-      <div class="entry-field">
-        <label for="taskPic">Pegawai bertanggungjawab</label>
-        <input id="taskPic" name="pic" required maxlength="80" placeholder="Nama PIC">
-      </div>
-      <div class="entry-field">
-        <label for="taskUnit">Unit</label>
-        <input id="taskUnit" name="unit" required maxlength="80" placeholder="Kurikulum / HEM / ICT">
-      </div>
-      <div class="entry-field">
-        <label for="taskDue">Tarikh akhir</label>
-        <input id="taskDue" name="akhir" required type="date">
-      </div>
-      <div class="entry-field">
-        <label for="taskStatus">Status</label>
-        <select id="taskStatus" name="status">
-          <option>Belum Mula</option>
-          <option selected>Dalam Proses</option>
-          <option>Selesai</option>
-        </select>
-      </div>
-      <div class="entry-field full">
-        <label for="taskProgress">Kemajuan: <span id="progressValue" class="mono">0%</span></label>
-        <input id="taskProgress" name="kemajuan" type="range" min="0" max="100" step="5" value="0">
-      </div>
-      <p class="entry-status" id="entryStatus" aria-live="polite"></p>
-    </div>
-    <div class="entry-actions">
-      <button class="btn" id="entryCancel" type="button">Batal</button>
-      <button class="btn btn-primary" id="entrySubmit" type="submit">Simpan &amp; Sync Sheet</button>
-    </div>
-  </form>
-</div>
 
 <div class="gate" id="gate" hidden>
   <form class="gate-box" id="gateForm" autocomplete="off">
@@ -1048,24 +1068,56 @@ function cycle(){
 }
 function renderAll(){ renderKpis(); renderTasks(); renderTimeline(); renderRelief(); }
 
-/* Paparkan laman Clock In/Out dalam viewport telefon sebenar. */
-function fitClockMobileView(){
-  const frame = $(".clock-frame-wrap");
-  const iframe = frame && frame.querySelector("iframe");
-  if (!frame || !iframe) return;
-  iframe.style.width = "390px";
-  iframe.style.height = "844px";
-  const scroller = frame.querySelector(".clock-scroll");
-  if (scroller && frame.clientWidth < 390) scroller.style.marginLeft = "0";
-  else if (scroller) scroller.style.marginLeft = "auto";
-}
-window.addEventListener("resize", fitClockMobileView);
-window.addEventListener("load", () => setTimeout(fitClockMobileView, 100));
-const clockIframe = $(".clock-frame-wrap iframe");
-if (clockIframe) clockIframe.addEventListener("load", () => {
-  $("#clockLoading").hidden = true;
-  fitClockMobileView();
-});
+/* ---------- Tetingkap terapung Clock In/Out (boleh diseret, diubah saiz, dilipat) ---------- */
+(function(){
+  const W = 390, H = 844, HEAD = 34, KEY = "clockWin.v1";
+  const win = $("#clockWin"), fab = $("#clockFab"), head = $("#clockHead"), grip = $("#clockGrip");
+  const frameWrap = win.querySelector(".clock-frame-wrap"), body = win.querySelector(".fw-body"), iframe = win.querySelector("iframe");
+  let st = { x: null, y: null, k: 0.6, open: false, fold: false };
+  try { Object.assign(st, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch(e){}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} };
+  const maxK = () => Math.max(0.3, Math.min(1.5, (innerWidth - 12) / (W + 2), (innerHeight - HEAD - 70) / (H + 2)));
+  function layout(){
+    st.k = Math.min(maxK(), Math.max(0.3, st.k));
+    const bw = Math.round(W * st.k), bh = Math.round(H * st.k);
+    frameWrap.style.transform = "scale(" + st.k + ")";
+    body.style.width = bw + "px"; body.style.height = bh + "px";
+    win.classList.toggle("fold", st.fold);
+    const w = bw + 2, h = HEAD + 2 + (st.fold ? 0 : bh);
+    win.style.width = w + "px";
+    if (st.x == null) { st.x = innerWidth - w - 14; st.y = 70; }
+    st.x = Math.min(Math.max(0, st.x), Math.max(0, innerWidth - w));
+    st.y = Math.min(Math.max(0, st.y), Math.max(0, innerHeight - h));
+    win.style.left = st.x + "px"; win.style.top = st.y + "px";
+  }
+  function setOpen(on){
+    st.open = on; win.hidden = !on; fab.hidden = on;
+    if (on && !iframe.src) iframe.src = iframe.dataset.src;
+    if (on) layout();
+    save();
+  }
+  function drag(el, cls, onMove){
+    el.addEventListener("pointerdown", e => {
+      if (e.target.closest("button,a")) return;
+      e.preventDefault(); el.setPointerCapture(e.pointerId); win.classList.add(cls);
+      const sx = e.clientX, sy = e.clientY, ox = st.x, oy = st.y, ok = st.k;
+      const mv = ev => { onMove(ev.clientX - sx, ev.clientY - sy, ox, oy, ok); layout(); };
+      const up = () => { win.classList.remove(cls); el.removeEventListener("pointermove", mv); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up); save(); };
+      el.addEventListener("pointermove", mv); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+    });
+  }
+  drag(head, "dragging", (dx, dy, ox, oy) => { st.x = ox + dx; st.y = oy + dy; });
+  drag(grip, "resizing", (dx, dy, ox, oy, ok) => { st.k = ok + Math.max(dx / W, dy / H); });
+  const step = d => { st.k += d; layout(); save(); };
+  $("#clockSmaller").addEventListener("click", () => step(-0.1));
+  $("#clockBigger").addEventListener("click", () => step(0.1));
+  $("#clockFold").addEventListener("click", () => { st.fold = !st.fold; layout(); save(); });
+  $("#clockClose").addEventListener("click", () => setOpen(false));
+  fab.addEventListener("click", () => setOpen(true));
+  iframe.addEventListener("load", () => { $("#clockLoading").hidden = true; });
+  window.addEventListener("resize", () => { if (st.open) layout(); });
+  setOpen(!!st.open);
+})();
 
 /* ---------- Mod TV ---------- */
 let wakeLock = null;
@@ -1084,7 +1136,6 @@ tickClock();
 setInterval(tickClock, 1000);
 setInterval(cycle, 1000);
 setInterval(pushDemoMessage, 15000);
-fitClockMobileView();
 </script>
 
 <script>
