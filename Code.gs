@@ -109,12 +109,12 @@ function saveDashboard(payload) {
   if (SHEETS_SAVE.indexOf(name) === -1) throw new Error('Tab tidak dibenarkan: ' + name);
   var row = payload.row || {};
   if (payload.action === 'delete') return deleteRow_(name, row);
+  if (payload.action === 'update') return updateRow_(name, row);
 
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    var sh = getSheet_(name);
-    if (!sh) throw new Error('Tab tidak dijumpai: ' + name);
+    var sh = getSheet_(name) || createSheet_(name);   // cipta tab jika belum ada
     var head = headers_(sh);
     if (!head.length) throw new Error('Tab ' + name + ' tiada pengepala (baris 1).');
 
@@ -142,40 +142,67 @@ function saveDashboard(payload) {
   }
 }
 
-/* Padam rekod (batal relief). Cari ikut localId; jika tiada, guna nombor baris (_row)
- * tetapi hanya jika kelas+tarikh+masa pada baris itu sepadan (elak padam baris salah). */
-function deleteRow_(name, row) {
+/* Cari baris: ikut localId; jika tiada, guna nombor baris (_row) tetapi hanya jika nilai semakan
+ * (row._check, atau kelas+tarikh+masa) sepadan — elak ubah/padam baris salah apabila baris bergeser. */
+function findRow_(head, vals, row) {
+  var i, c;
+  function rec(idx) {
+    var o = {};
+    head.forEach(function (k, ci) { if (k) o[k] = fmtCell_(k, vals[idx][ci], undefined); });
+    return o;
+  }
+  if (row.localId) {
+    c = head.indexOf('localId');
+    if (c >= 0) for (i = 0; i < vals.length; i++) if (String(vals[i][c]) === String(row.localId)) return i;
+  }
+  if (row._row) {
+    i = Number(row._row) - 2;
+    if (i >= 0 && i < vals.length) {
+      var chk = row._check || { kelas: row.kelas, tarikh: row.tarikh, masa: row.masa };
+      var r = rec(i), ok = true;
+      Object.keys(chk).forEach(function (k) { if (String(r[k]) !== String(chk[k])) ok = false; });
+      if (ok) return i;
+    }
+  }
+  return -1;
+}
+
+function withRow_(name, row, fn) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
     var sh = getSheet_(name);
     if (!sh) throw new Error('Tab tidak dijumpai: ' + name);
-    if (sh.getLastRow() < 2) return { ok: true, deleted: 0 };
+    if (sh.getLastRow() < 2) return { ok: true, found: 0 };
     var head = headers_(sh);
     var vals = sh.getRange(2, 1, sh.getLastRow() - 1, head.length).getValues();
-    function rec(i) {
-      var o = {};
-      head.forEach(function (k, c) { if (k) o[k] = fmtCell_(k, vals[i][c]); });
-      return o;
-    }
-    var target = -1, i;
-    if (row.localId) {
-      var cId = head.indexOf('localId');
-      if (cId >= 0) for (i = 0; i < vals.length; i++) if (String(vals[i][cId]) === String(row.localId)) { target = i; break; }
-    }
-    if (target < 0 && row._row) {
-      i = Number(row._row) - 2;
-      if (i >= 0 && i < vals.length) {
-        var r = rec(i);
-        if (String(r.kelas) === String(row.kelas) && String(r.tarikh) === String(row.tarikh) && String(r.masa) === String(row.masa)) target = i;
-      }
-    }
-    if (target < 0) return { ok: true, deleted: 0 };   // sudah tiada
-    sh.deleteRow(target + 2);
-    return { ok: true, deleted: 1 };
+    var idx = findRow_(head, vals, row);
+    if (idx < 0) return { ok: true, found: 0 };
+    return fn(sh, head, idx + 2);
   } finally {
     lock.releaseLock();
   }
+}
+
+/* Padam rekod (batal relief / tugasan) */
+function deleteRow_(name, row) {
+  return withRow_(name, row, function (sh, head, r) {
+    sh.deleteRow(r);
+    return { ok: true, found: 1, deleted: 1 };
+  });
+}
+
+/* Kemas kini rekod sedia ada (edit tugasan). Hanya medan yang dihantar diubah. */
+function updateRow_(name, row) {
+  var res = withRow_(name, row, function (sh, head, r) {
+    head.forEach(function (k, ci) {
+      if (!k || k === 'localId' && !row.localId) return;
+      if (row[k] !== undefined && row[k] !== null) sh.getRange(r, ci + 1).setValue(row[k]);
+    });
+    return { ok: true, found: 1, updated: 1 };
+  });
+  if (!res.found) throw new Error('Rekod tidak dijumpai dalam Sheet (mungkin sudah dipadam atau diubah). Muat semula dashboard.');
+  return res;
 }
 
 /* ---------------- Semakan status PWA (pilihan) ----------------
@@ -234,6 +261,22 @@ function normHeader_(h) {
 function headers_(sh) {
   if (sh.getLastColumn() < 1) return [];
   return sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(normHeader_);
+}
+
+/* Pengepala lalai untuk tab yang dicipta automatik */
+var DEFAULT_HEADERS = {
+  'Tugasan': ['tajuk', 'pic', 'unit', 'akhir', 'status', 'kemajuan', 'localId'],
+  'Relief': ['tarikh', 'masa', 'kelas', 'guruTidakHadir', 'guruRelief', 'status', 'nota', 'localId'],
+  'Telegram': ['masa', 'kumpulan', 'pengirim', 'mesej', 'chatId', 'messageId']
+};
+
+function createSheet_(name) {
+  var h = DEFAULT_HEADERS[name];
+  if (!h) throw new Error('Tab tidak dijumpai: ' + name);
+  var sh = SpreadsheetApp.getActive().insertSheet(name);
+  sh.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold');
+  sh.setFrozenRows(1);
+  return sh;
 }
 
 /* Nama lajur lain yang diterima -> nama standard dashboard */

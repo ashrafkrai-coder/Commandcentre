@@ -98,6 +98,12 @@ h1 span{color:var(--ice)}
 .relief-del{background:transparent; border:1px solid var(--line2); color:var(--dim); padding:5px 8px; font:600 10.5px/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; cursor:pointer}
 .relief-del:hover{border-color:var(--crit); color:var(--crit)}
 .relief-del:disabled{opacity:.5; cursor:wait}
+.task-ops{white-space:nowrap; text-align:right}
+.task-ops button{background:transparent; border:1px solid var(--line2); color:var(--dim); padding:5px 8px; margin-left:4px; font:600 10.5px/1 var(--f-mono); letter-spacing:.06em; text-transform:uppercase; cursor:pointer}
+.task-ops button:hover{border-color:var(--ice); color:var(--ice)}
+.task-ops button.del:hover{border-color:var(--crit); color:var(--crit)}
+.task-ops button:disabled{opacity:.5; cursor:wait}
+.pend{display:inline-block; margin-left:6px; font:700 9.5px/1 var(--f-mono); letter-spacing:.08em; color:var(--warn); border:1px solid var(--warn); padding:2px 4px; vertical-align:2px}
 .relief-note{margin:6px 0 0; color:var(--fg)}
 .relief-empty{padding:12px 14px 18px; color:var(--dim); font:500 12px/1.5 var(--f-mono)}
 .clock-frame-wrap{position:relative; width:390px; height:844px; overflow:hidden; background:#dff3f7; transform-origin:0 0}
@@ -322,7 +328,7 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
     </div>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Tugasan</th><th>PIC</th><th>Tarikh Akhir</th><th>Kemajuan</th><th>Status</th></tr></thead>
+        <thead><tr><th>Tugasan</th><th>PIC</th><th>Tarikh Akhir</th><th>Kemajuan</th><th>Status</th><th></th></tr></thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
@@ -732,22 +738,40 @@ async function syncQueue(storageKey, saveItem, after){
   if (!failed.length && after) after();
 }
 
-function openEntry(){
+let editing = null;   // tugasan yang sedang diedit (null = tambah baru)
+const taskKey = t => t.localId || (t._row ? "r" + t._row : (t._k || (t._k = "k" + Math.random().toString(36).slice(2,9))));
+const isPending = t => !!t.localId && readList(TASK_QUEUE).some(x => x.localId === t.localId);
+const findTask = k => (DATA.tugasan || []).find(t => taskKey(t) === k);
+
+function openEntry(task){
   if (LIVE && NEED_KEY && !getKey()) { askKey(); return; }
+  editing = task && task.tajuk ? task : null;
   $("#entryStatus").textContent = "";
   $("#entryStatus").className = "entry-status";
+  $("#entryForm .entry-head h2").textContent = editing ? "Edit Tugasan" : "Tambah Tugasan Baru";
+  $("#entrySubmit").textContent = editing ? "Simpan Perubahan" : "Simpan & Sync Sheet";
   $("#taskDue").value = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+  if (editing) {
+    $("#taskTitle").value = editing.tajuk || "";
+    $("#taskPic").value = editing.pic || "";
+    $("#taskUnit").value = editing.unit || "";
+    if (editing.akhir && /^d{4}-d{2}-d{2}$/.test(editing.akhir)) $("#taskDue").value = editing.akhir;
+    $("#taskStatus").value = editing.status || "Dalam Proses";
+    $("#taskProgress").value = Number(editing.kemajuan) || 0;
+    $("#progressValue").textContent = (Number(editing.kemajuan) || 0) + "%";
+  }
   $("#entryModal").hidden = false;
   setTimeout(() => $("#taskTitle").focus(), 30);
 }
 function closeEntry(){
+  editing = null;
   $("#entryModal").hidden = true;
   $("#entryForm").reset();
   $("#taskProgress").value = 0;
   $("#progressValue").textContent = "0%";
 }
 
-$("#addTaskBtn").addEventListener("click", openEntry);
+$("#addTaskBtn").addEventListener("click", () => openEntry());
 $("#entryClose").addEventListener("click", closeEntry);
 $("#entryCancel").addEventListener("click", closeEntry);
 $("#entryModal").addEventListener("click", e => { if (e.target === $("#entryModal")) closeEntry(); });
@@ -771,7 +795,35 @@ $("#entryForm").addEventListener("submit", async e => {
   const submit = $("#entrySubmit");
   submit.disabled = true;
   $("#entryStatus").className = "entry-status";
-  $("#entryStatus").textContent = LIVE ? "Menghantar ke Google Sheet…" : "Menambah pada dashboard…";
+  $("#entryStatus").textContent = LIVE ? "Menghantar ke Google Sheet…" : (editing ? "Menyimpan…" : "Menambah pada dashboard…");
+
+  if (editing) {                                   // ---- EDIT ----
+    const old = editing;
+    const upd = { ...task, localId: old.localId || task.localId, _row: old._row || "", _check: { tajuk: old.tajuk } };
+    try {
+      if (LIVE) {
+        const queued = readList(TASK_QUEUE).some(x => old.localId && x.localId === old.localId);
+        if (queued) {                              // belum pernah masuk Sheet: kemas kini dalam barisan sahaja
+          writeList(TASK_QUEUE, readList(TASK_QUEUE).map(x => x.localId === old.localId ? { ...x, ...task, localId: old.localId } : x));
+        } else {
+          await updateTaskInSheet(upd);
+        }
+      } else {
+        writeList(DEMO_TASKS, readList(DEMO_TASKS).map(x => x.localId === old.localId ? { ...x, ...task, localId: old.localId } : x));
+      }
+      Object.assign(old, task, { localId: upd.localId });
+      old.tarikh = parseYMD(old.akhir);
+      renderAll();
+      $("#entryStatus").className = "entry-status success";
+      $("#entryStatus").textContent = LIVE ? "Perubahan disimpan dalam Google Sheet." : "Perubahan disimpan.";
+      setTimeout(() => { closeEntry(); if (LIVE) loadData(); }, 500);
+    } catch(err) {
+      $("#entryStatus").className = "entry-status error";
+      $("#entryStatus").textContent = String(err.message || err);
+    }
+    submit.disabled = false;
+    return;
+  }
 
   addLocalTask(task);
   if (LIVE) {
@@ -794,6 +846,46 @@ $("#entryForm").addEventListener("submit", async e => {
     setTimeout(closeEntry, 500);
   }
   submit.disabled = false;
+});
+
+async function taskApi(action, row){
+  if (GAS) {
+    return await new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)
+        .saveDashboard({ action, sheet:"Tugasan", type:"tugasan", key:getKey(), row });
+    });
+  }
+  const params = new URLSearchParams({ api:"save", action, sheet:"Tugasan", type:"tugasan", key:getKey(), data:JSON.stringify(row) });
+  const response = await fetch(`${API_URL}?${params.toString()}`, { cache:"no-store" });
+  const result = await response.json().catch(() => ({ error:"Respons API tidak sah" }));
+  if (!response.ok || result.error) throw new Error(result.error || `Ralat HTTP ${response.status}`);
+  return result;
+}
+const updateTaskInSheet = row => taskApi("update", row);
+
+$("#tbody").addEventListener("click", async e => {
+  const btn = e.target.closest("button[data-act]"); if (!btn) return;
+  const t = findTask(btn.dataset.k); if (!t) return;
+  if (btn.dataset.act === "edit") { openEntry(t); return; }
+  if (!confirm(`Padam tugasan "${t.tajuk}"?
+Rekod akan dipadam dari Google Sheet.`)) return;
+  btn.disabled = true;
+  try {
+    if (LIVE) {
+      const queued = readList(TASK_QUEUE).some(x => t.localId && x.localId === t.localId);
+      writeList(TASK_QUEUE, readList(TASK_QUEUE).filter(x => !(t.localId && x.localId === t.localId)));
+      if (!queued) await taskApi("delete", { localId:t.localId || "", _row:t._row || "", _check:{ tajuk:t.tajuk } });
+    } else {
+      writeList(DEMO_TASKS, readList(DEMO_TASKS).filter(x => !(t.localId && x.localId === t.localId)));
+    }
+    DATA.tugasan = DATA.tugasan.filter(x => x !== t);
+    renderAll();
+    if (LIVE) loadData();
+  } catch(err) {
+    btn.disabled = false;
+    $("#alert").innerHTML = `<b>Gagal memadam tugasan.</b> ${esc(err.message || err)}`;
+    $("#alert").hidden = false;
+  }
 });
 
 async function saveReliefToSheet(record){
@@ -1016,12 +1108,13 @@ function renderTasks(){
   $("#tcount").textContent = `${list.length} dipaparkan`;
   $("#tbody").innerHTML = list.length ? list.map(({t,s}) => `
     <tr class="row st-${s}">
-      <td><div class="tt">${esc(t.tajuk)}</div><div class="tu">${esc(t.unit)}</div></td>
+      <td><div class="tt">${esc(t.tajuk)}${isPending(t) ? '<span class="pend" title="Belum disimpan ke Google Sheet; akan dicuba semula">BELUM SYNC</span>' : ""}</div><div class="tu">${esc(t.unit)}</div></td>
       <td class="pic">${esc(t.pic)}</td>
       <td class="due">${t.tarikh ? fmtDate(t.tarikh) : "—"}<small>${dueText(t)}</small></td>
       <td><div class="prog"><div class="bar"><i style="width:${t.kemajuan}%"></i></div><span>${t.kemajuan}%</span></div></td>
       <td><span class="pill">${ST[s].label}</span></td>
-    </tr>`).join("") : `<tr><td colspan="5" class="empty">Tiada tugasan dalam kategori ini.</td></tr>`;
+      <td class="task-ops"><button type="button" data-act="edit" data-k="${taskKey(t)}">Edit</button><button type="button" class="del" data-act="del" data-k="${taskKey(t)}" aria-label="Padam tugasan">Padam</button></td>
+    </tr>`).join("") : `<tr><td colspan="6" class="empty">Tiada tugasan dalam kategori ini.</td></tr>`;
 }
 $("#chips").addEventListener("click", e => {
   const b = e.target.closest(".chip"); if (!b) return;
