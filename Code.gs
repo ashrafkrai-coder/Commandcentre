@@ -97,14 +97,18 @@ function dataDashboard(key) {
       })
       .sort(function (a, b) { return String(a.mula).localeCompare(String(b.mula)); }),
     pengumuman: readSheet_('Pengumuman')
-      .filter(function (x) { return (x.teks || x.pengumuman) && isAktif_(x.aktif); })
+      .filter(function (x) {
+        var tamat = x.tarikhTamat;   // "Tarikh Tamat": abaikan pengumuman yang sudah tamat
+        return (x.teks || x.pengumuman) && isAktif_(x.aktif) && !(tamat && String(tamat) < Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'));
+      })
       .map(function (x) { return String(x.teks || x.pengumuman); }),
     telegram: tg.slice(0, 50)
   };
 }
 
 function saveDashboard(payload) {
-  checkKey_(payload && payload.key);
+  if (!payload) throw new Error('saveDashboard dipanggil tanpa data. Fungsi ini dipanggil oleh dashboard, bukan butang Run.');
+  checkKey_(payload.key);
   var name = payload.sheet;
   if (SHEETS_SAVE.indexOf(name) === -1) throw new Error('Tab tidak dibenarkan: ' + name);
   var row = payload.row || {};
@@ -130,16 +134,36 @@ function saveDashboard(payload) {
       }
     }
 
-    var out = head.map(function (k) {
-      var v = row[k];
-      if (v === undefined) { var al = ALIAS[k.toLowerCase()]; if (al) v = row[al]; }
-      return v === undefined || v === null ? '' : v;
-    });
-    sh.appendRow(out);
+    writeNewRow_(sh, name, head, row);
     return { ok: true };
   } finally {
     lock.releaseLock();
   }
+}
+
+var KEYCOL = { 'Tugasan': 'tajuk', 'Relief': 'kelas' };   // lajur penentu baris kosong
+
+/* Tulis rekod ke baris kosong pertama (templat Sheet), atau tambah di hujung dengan menyalin formula. */
+function writeNewRow_(sh, name, head, row) {
+  var last = sh.getLastRow(), target = last + 1, i, c;
+  var kc = KEYCOL[name] ? head.indexOf(KEYCOL[name]) : -1;
+  if (kc >= 0 && last >= 2) {
+    var keys = sh.getRange(2, kc + 1, last - 1, 1).getValues();
+    for (i = 0; i < keys.length; i++) if (String(keys[i][0]).trim() === '') { target = i + 2; break; }
+  }
+  if (target > last && last >= 2) {                      // baris baharu di hujung: salin formula dari baris atas
+    var f = sh.getRange(last, 1, 1, head.length).getFormulas()[0];
+    for (c = 0; c < f.length; c++) if (f[c]) sh.getRange(last, c + 1).copyTo(sh.getRange(target, c + 1));
+  }
+  var tf = sh.getRange(target, 1, 1, head.length).getFormulas()[0];
+  head.forEach(function (k, ci) {
+    if (!k || tf[ci]) return;                            // jangan timpa lajur formula
+    var v = row[k];
+    if (v === undefined) { var al = ALIAS[String(k).toLowerCase()]; if (al) v = row[al]; }
+    if (v === undefined || v === null || v === '') return;
+    sh.getRange(target, ci + 1).setValue(v);
+  });
+  return target;
 }
 
 /* Cari baris: ikut localId; jika tiada, guna nombor baris (_row) tetapi hanya jika nilai semakan
@@ -187,7 +211,12 @@ function withRow_(name, row, fn) {
 /* Padam rekod (batal relief / tugasan) */
 function deleteRow_(name, row) {
   return withRow_(name, row, function (sh, head, r) {
-    sh.deleteRow(r);
+    var f = sh.getRange(r, 1, 1, head.length).getFormulas()[0];
+    if (f.some(function (x) { return x; })) {            // baris templat berformula: kosongkan sel input sahaja
+      head.forEach(function (k, ci) { if (!f[ci]) sh.getRange(r, ci + 1).clearContent(); });
+    } else {
+      sh.deleteRow(r);
+    }
     return { ok: true, found: 1, deleted: 1 };
   });
 }
@@ -195,9 +224,13 @@ function deleteRow_(name, row) {
 /* Kemas kini rekod sedia ada (edit tugasan). Hanya medan yang dihantar diubah. */
 function updateRow_(name, row) {
   var res = withRow_(name, row, function (sh, head, r) {
+    var f = sh.getRange(r, 1, 1, head.length).getFormulas()[0];
     head.forEach(function (k, ci) {
-      if (!k || k === 'localId' && !row.localId) return;
-      if (row[k] !== undefined && row[k] !== null) sh.getRange(r, ci + 1).setValue(row[k]);
+      if (!k || f[ci]) return;
+      if (k === 'localId' && !row.localId) return;
+      var v = row[k];
+      if (v === undefined || v === null) return;
+      sh.getRange(r, ci + 1).setValue(v);
     });
     return { ok: true, found: 1, updated: 1 };
   });
@@ -250,12 +283,25 @@ function isAktif_(v) {
   return !(s === 'tidak' || s === 'false' || s === 'no' || s === '0' || s === 'x');
 }
 
-/* "Guru Tidak Hadir" / "guru_tidak_hadir" -> guruTidakHadir ; "localId" kekal */
+/* Pengepala sebenar dalam Sheet (cth. "Tajuk Tugasan", "Kemajuan (%)", "ID") -> nama standard dashboard */
+var CANON = {
+  'id': 'localId', 'localid': 'localId',
+  'tajuktugasan': 'tajuk', 'tarikhakhir': 'akhir', 'kemajuan': 'kemajuan',
+  'chatid': 'chatId', 'messageid': 'messageId',
+  'namaaplikasi': 'nama', 'pautanurl': 'pautan',
+  'masamula': 'mula', 'masatamat': 'tamat',
+  'tekspengumuman': 'teks', 'papardidashboard': 'papar'
+};
+
+/* "Guru Tidak Hadir" / "guru_tidak_hadir" -> guruTidakHadir */
 function normHeader_(h) {
   h = String(h).trim();
-  if (!/[\s_\-]/.test(h)) return h.charAt(0).toLowerCase() + h.slice(1);
-  var w = h.toLowerCase().split(/[\s_\-]+/).filter(String);
-  return w[0] + w.slice(1).map(function (x) { return x.charAt(0).toUpperCase() + x.slice(1); }).join('');
+  var base = h.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (CANON[base]) return CANON[base];
+  var w = h.split(/[^A-Za-z0-9]+/).filter(String);
+  if (!w.length) return '';
+  if (w.length === 1) return w[0].charAt(0).toLowerCase() + w[0].slice(1);
+  return w[0].toLowerCase() + w.slice(1).map(function (x) { return x.charAt(0).toUpperCase() + x.slice(1).toLowerCase(); }).join('');
 }
 
 function headers_(sh) {

@@ -874,7 +874,10 @@ Rekod akan dipadam dari Google Sheet.`)) return;
     if (LIVE) {
       const queued = readList(TASK_QUEUE).some(x => t.localId && x.localId === t.localId);
       writeList(TASK_QUEUE, readList(TASK_QUEUE).filter(x => !(t.localId && x.localId === t.localId)));
-      if (!queued) await taskApi("delete", { localId:t.localId || "", _row:t._row || "", _check:{ tajuk:t.tajuk } });
+      if (!queued) {
+        const res = await taskApi("delete", { localId:t.localId || "", _row:t._row || "", _check:{ tajuk:t.tajuk } });
+        if (res && res.found === 0) throw new Error("Rekod tidak dijumpai dalam Sheet (mungkin sudah dipadam atau baris telah berubah). Data dimuat semula.");
+      }
     } else {
       writeList(DEMO_TASKS, readList(DEMO_TASKS).filter(x => !(t.localId && x.localId === t.localId)));
     }
@@ -882,7 +885,7 @@ Rekod akan dipadam dari Google Sheet.`)) return;
     renderAll();
     if (LIVE) loadData();
   } catch(err) {
-    btn.disabled = false;
+    btn.disabled = false; if (LIVE) loadData();
     $("#alert").innerHTML = `<b>Gagal memadam tugasan.</b> ${esc(err.message || err)}`;
     $("#alert").hidden = false;
   }
