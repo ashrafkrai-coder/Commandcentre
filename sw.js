@@ -1,6 +1,6 @@
 // Service worker Command Centre
 // Tukar VERSI setiap kali fail PWA dikemas kini supaya peranti ambil versi baru.
-const VERSI = "cc-v8";
+const VERSI = "cc-v9";
 const FAIL = [
   "./",
   "index.html",
