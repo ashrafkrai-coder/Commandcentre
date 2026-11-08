@@ -1,0 +1,217 @@
+/**
+ * COMMAND CENTRE SMKTM — Google Apps Script (Web App)
+ *
+ * Terikat pada Google Sheet (Extensions > Apps Script). Tab yang digunakan:
+ *   Tugasan  : tajuk | pic | unit | akhir | status | kemajuan | localId
+ *   Relief   : tarikh | masa | kelas | guruTidakHadir | guruRelief | status | nota | localId
+ *   PWA      : nama | pautan | kategori | aktif | urutan | status
+ *   Jadual   : mula | tamat | acara | lokasi
+ *   Pengumuman : teks | aktif            (lajur A = teks; "aktif" pilihan)
+ *   Telegram : masa | kumpulan | pengirim | teks | id | papar
+ * Nama pengepala boleh ditulis "guruTidakHadir" ATAU "Guru Tidak Hadir" (huruf besar/kecil tidak penting).
+ *
+ * TETAPAN SEKALI SAHAJA:
+ *   Project Settings > Script properties > tambah
+ *     CC_KEY    = kunci akses rahsia (dimasukkan guru pada dashboard)
+ *     SEKOLAH   = SMK Taman Medan        (pilihan)
+ *     REFRESH   = 30                      (pilihan, saat)
+ *
+ * DEPLOY: Deploy > Manage deployments > Edit > Version: New version > Deploy
+ *   Execute as: Me   |   Who has access: Anyone
+ *   (URL /exec kekal sama; tampal dalam config.js)
+ *
+ * API (GET, JSON, CORS dibenarkan oleh Apps Script):
+ *   ?api=data&key=KUNCI
+ *   ?api=save&action=append&sheet=Tugasan|Relief|Telegram&type=...&key=KUNCI&data={JSON}
+ */
+
+var SHEETS_SAVE = ['Tugasan', 'Relief', 'Telegram'];   // tab yang boleh ditulis dari dashboard
+var TZ = Session.getScriptTimeZone() || 'Asia/Kuala_Lumpur';
+
+/* ---------------- Titik masuk ---------------- */
+function doGet(e) {
+  var p = (e && e.parameter) || {};
+  try {
+    if (p.api === 'data') return json_(dataDashboard(p.key));
+    if (p.api === 'save') {
+      var payload = {
+        sheet: p.sheet,
+        type: p.type,
+        key: p.key,
+        row: JSON.parse(p.data || '{}')
+      };
+      return json_(saveDashboard(payload));
+    }
+    if (p.api) return json_({ error: 'api tidak dikenali' });
+  } catch (err) {
+    return json_({ error: String(err && err.message || err) });
+  }
+  // Tiada ?api= : papar dashboard dalam Apps Script (jika fail Index.html wujud)
+  try {
+    return HtmlService.createHtmlOutputFromFile('Index')
+      .setTitle('Command Centre SMKTM')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  } catch (err) {
+    return json_({ ok: true, info: 'Command Centre API aktif. Gunakan ?api=data&key=...' });
+  }
+}
+
+/* Pilihan: terima POST (cth. skrip Tampermonkey Telegram) — badan JSON {key, sheet, row} */
+function doPost(e) {
+  try {
+    var b = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    return json_(saveDashboard(b));
+  } catch (err) {
+    return json_({ error: String(err && err.message || err) });
+  }
+}
+
+/* ---------------- Dipanggil juga melalui google.script.run ---------------- */
+function dataDashboard(key) {
+  checkKey_(key);
+  var props = PropertiesService.getScriptProperties();
+  var tg = readSheet_('Telegram').filter(function (m) {
+    var s = String(m.papar === undefined ? 'ya' : m.papar).toLowerCase();
+    return s !== 'tidak' && s !== 'false' && s !== 'no' && s !== '0';
+  });
+  tg.sort(function (a, b) { return String(b.masa).localeCompare(String(a.masa)); });
+
+  return {
+    sekolah: props.getProperty('SEKOLAH') || 'SMK Taman Medan',
+    refresh: Number(props.getProperty('REFRESH')) || 30,
+    tugasan: readSheet_('Tugasan').filter(function (t) { return t.tajuk; }).map(function (t) {
+      t.kemajuan = Number(t.kemajuan) || 0;
+      return t;
+    }),
+    relief: readSheet_('Relief').filter(function (r) { return r.kelas; })
+      .sort(function (a, b) { return String(b.tarikh + b.masa).localeCompare(String(a.tarikh + a.masa)); }),
+    pwa: readSheet_('PWA')
+      .filter(function (p) { return p.nama && isAktif_(p.aktif); })
+      .sort(function (a, b) { return (Number(a.urutan) || 999) - (Number(b.urutan) || 999); }),
+    jadual: readSheet_('Jadual').filter(function (j) { return j.acara; })
+      .sort(function (a, b) { return String(a.mula).localeCompare(String(b.mula)); }),
+    pengumuman: readSheet_('Pengumuman')
+      .filter(function (x) { return (x.teks || x.pengumuman) && isAktif_(x.aktif); })
+      .map(function (x) { return String(x.teks || x.pengumuman); }),
+    telegram: tg.slice(0, 50)
+  };
+}
+
+function saveDashboard(payload) {
+  checkKey_(payload && payload.key);
+  var name = payload.sheet;
+  if (SHEETS_SAVE.indexOf(name) === -1) throw new Error('Tab tidak dibenarkan: ' + name);
+  var row = payload.row || {};
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sh = SpreadsheetApp.getActive().getSheetByName(name);
+    if (!sh) throw new Error('Tab tidak dijumpai: ' + name);
+    var head = headers_(sh);
+    if (!head.length) throw new Error('Tab ' + name + ' tiada pengepala (baris 1).');
+
+    // Elak rekod berganda apabila dashboard cuba semula (localId / id)
+    var idKey = row.localId ? 'localId' : (row.id ? 'id' : '');
+    if (idKey) {
+      var col = head.indexOf(idKey);
+      if (col >= 0 && sh.getLastRow() > 1) {
+        var ids = sh.getRange(2, col + 1, sh.getLastRow() - 1, 1).getValues();
+        for (var i = 0; i < ids.length; i++) {
+          if (String(ids[i][0]) === String(row[idKey])) return { ok: true, duplicate: true };
+        }
+      }
+    }
+
+    var out = head.map(function (k) {
+      var v = row[k];
+      return v === undefined || v === null ? '' : v;
+    });
+    sh.appendRow(out);
+    return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------------- Semakan status PWA (pilihan) ----------------
+ * Jalankan setupTriggers() sekali untuk semak pautan tab "PWA" setiap 10 minit.
+ * Lajur "status" diisi: online | semak | luar */
+function semakPwa() {
+  var sh = SpreadsheetApp.getActive().getSheetByName('PWA');
+  if (!sh || sh.getLastRow() < 2) return;
+  var head = headers_(sh);
+  var cUrl = head.indexOf('pautan'), cSt = head.indexOf('status');
+  if (cUrl < 0 || cSt < 0) return;
+  var urls = sh.getRange(2, cUrl + 1, sh.getLastRow() - 1, 1).getValues();
+  var res = urls.map(function (r) {
+    var u = String(r[0] || '');
+    if (!/^https?:\/\//i.test(u)) return ['luar'];
+    try {
+      var c = UrlFetchApp.fetch(u, { muteHttpExceptions: true, followRedirects: true }).getResponseCode();
+      return [c < 400 ? 'online' : (c < 500 ? 'semak' : 'luar')];
+    } catch (e) { return ['luar']; }
+  });
+  sh.getRange(2, cSt + 1, res.length, 1).setValues(res);
+}
+
+function setupTriggers() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'semakPwa') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('semakPwa').timeBased().everyMinutes(10).create();
+}
+
+/* ---------------- Pembantu ---------------- */
+function json_(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function checkKey_(key) {
+  var real = PropertiesService.getScriptProperties().getProperty('CC_KEY');
+  if (!real) throw new Error('CC_KEY belum ditetapkan dalam Script properties');
+  if (!key || String(key) !== real) throw new Error('unauthorized');
+}
+
+function isAktif_(v) {
+  if (v === undefined || v === '' || v === null) return true;
+  var s = String(v).toLowerCase();
+  return !(s === 'tidak' || s === 'false' || s === 'no' || s === '0' || s === 'x');
+}
+
+/* "Guru Tidak Hadir" / "guru_tidak_hadir" -> guruTidakHadir ; "localId" kekal */
+function normHeader_(h) {
+  h = String(h).trim();
+  if (!/[\s_\-]/.test(h)) return h.charAt(0).toLowerCase() + h.slice(1);
+  var w = h.toLowerCase().split(/[\s_\-]+/).filter(String);
+  return w[0] + w.slice(1).map(function (x) { return x.charAt(0).toUpperCase() + x.slice(1); }).join('');
+}
+
+function headers_(sh) {
+  if (sh.getLastColumn() < 1) return [];
+  return sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(normHeader_);
+}
+
+function fmtCell_(key, v) {
+  if (v instanceof Date) {
+    if (/^(masa|mula|tamat)$/.test(key) && v.getFullYear() < 1950) return Utilities.formatDate(v, TZ, 'HH:mm');
+    if (key === 'masa' && v.getFullYear() >= 1950) return v.toISOString();   // cap masa Telegram
+    return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
+  }
+  return v;
+}
+
+function readSheet_(name) {
+  var sh = SpreadsheetApp.getActive().getSheetByName(name);
+  if (!sh || sh.getLastRow() < 2) return [];
+  var head = headers_(sh);
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, head.length).getValues();
+  var out = [];
+  vals.forEach(function (r) {
+    if (r.every(function (c) { return c === '' || c === null; })) return;
+    var o = {};
+    head.forEach(function (k, i) { if (k) o[k] = fmtCell_(k, r[i]); });
+    out.push(o);
+  });
+  return out;
+}
