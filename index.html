@@ -569,7 +569,7 @@ const today0 = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
 const fmtDate = d => `${pad(d.getDate())} ${BULAN[d.getMonth()]}`;
 const hhmm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-const toMin = s => { const [h,m] = s.split(":").map(Number); return h*60+m; };
+const toMin = s => { const m = /^(d{1,2})[:.](d{2})/.exec(String(s == null ? "" : s).trim()); return m ? (+m[1])*60 + (+m[2]) : NaN; };
 const store = {
   get(k,def){ try{ return localStorage.getItem(k) ?? def; }catch(e){ return def; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
@@ -1060,7 +1060,7 @@ function pushDemoMessage(){
 
 /* ---------- PWA ---------- */
 const STL = { online:"ONLINE", semak:"SEMAK", luar:"LUAR TALIAN" };
-function initials(n){ return n.replace(/^e-/i,"E ").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase(); }
+function initials(n){ return String(n || "?").replace(/^e-/i,"E ").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase(); }
 function renderPwa(){
   $("#pcount").textContent = `${DATA.pwa.length} aplikasi`;
   $("#tiles").innerHTML = DATA.pwa.map(p => { const ok = /^https?:\/\//i.test(p.pautan||""); return `
@@ -1078,16 +1078,17 @@ function renderTimeline(){
   const now = new Date(), nm = now.getHours()*60 + now.getMinutes();
   $("#jdate").textContent = `${HARI[now.getDay()]}, ${fmtDate(now)}`;
   let nextMarked = false;
-  if (!DATA.jadual.length){ $("#tl").innerHTML = `<li class="empty">Tiada acara untuk hari ini dalam tab "Jadual".</li>`; return; }
-  $("#tl").innerHTML = DATA.jadual.map(e => {
-    const a = toMin(e.mula), b = toMin(e.tamat);
+  const jadual = DATA.jadual.filter(e => e && !isNaN(toMin(e.mula)));   // abaikan baris tanpa masa mula yang sah
+  if (!jadual.length){ $("#tl").innerHTML = `<li class="empty">Tiada acara untuk hari ini dalam tab "Jadual".</li>`; return; }
+  $("#tl").innerHTML = jadual.map(e => {
+    const a = toMin(e.mula); let b = toMin(e.tamat); if (isNaN(b) || b <= a) b = a + 60;
     let cls = "past", extra = "";
     if (nm >= a && nm < b){ cls = "now"; extra = `<div class="nowbar"><i style="width:${Math.round((nm-a)/(b-a)*100)}%"></i></div>`; }
     else if (nm < a){ cls = nextMarked ? "" : "next"; nextMarked = true; }
     return `<li class="ev ${cls}">
-      <div class="t">${e.mula}–${e.tamat}</div>
+      <div class="t">${esc(e.mula)}–${esc(e.tamat || "")}</div>
       <div class="node"><i></i></div>
-      <div><div class="a">${esc(e.acara)}${cls==="now"?'<span class="tag">SEDANG</span>':""}</div><div class="l">${esc(e.lokasi)}</div></div>
+      <div><div class="a">${esc(e.acara)}${cls==="now"?'<span class="tag">SEDANG</span>':""}</div><div class="l">${esc(e.lokasi || "")}</div></div>
       ${extra}
     </li>`;
   }).join("");

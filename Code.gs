@@ -89,7 +89,10 @@ function dataDashboard(key) {
     pwa: readSheet_('PWA')
       .filter(function (p) { return p.nama && isAktif_(p.aktif); })
       .sort(function (a, b) { return (Number(a.urutan) || 999) - (Number(b.urutan) || 999); }),
-    jadual: readSheet_('Jadual').filter(function (j) { return j.acara; })
+    jadual: readSheet_('Jadual').filter(function (j) {
+        // jika tab ada lajur "tarikh", papar hanya acara hari ini
+        return j.acara && (!j.tarikh || j.tarikh === Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'));
+      })
       .sort(function (a, b) { return String(a.mula).localeCompare(String(b.mula)); }),
     pengumuman: readSheet_('Pengumuman')
       .filter(function (x) { return (x.teks || x.pengumuman) && isAktif_(x.aktif); })
