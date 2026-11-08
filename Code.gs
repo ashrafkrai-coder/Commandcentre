@@ -32,6 +32,7 @@ var TZ = Session.getScriptTimeZone() || 'Asia/Kuala_Lumpur';
 function doGet(e) {
   var p = (e && e.parameter) || {};
   try {
+    if (p.api === 'debug') return json_(debugInfo_(p.key));
     if (p.api === 'data') return json_(dataDashboard(p.key));
     if (p.api === 'save') {
       var payload = {
@@ -75,7 +76,7 @@ function dataDashboard(key) {
     var s = String(m.papar === undefined ? 'ya' : m.papar).toLowerCase();
     return s !== 'tidak' && s !== 'false' && s !== 'no' && s !== '0';
   });
-  tg.sort(function (a, b) { return String(b.masa).localeCompare(String(a.masa)); });
+  tg.sort(function (a, b) { return String(b.masa).localeCompare(String(a.masa)) || (b._row - a._row); });
 
   return {
     sekolah: props.getProperty('SEKOLAH') || 'SMK Taman Medan',
@@ -88,6 +89,7 @@ function dataDashboard(key) {
       .sort(function (a, b) { return String(b.tarikh + b.masa).localeCompare(String(a.tarikh + a.masa)); }),
     pwa: readSheet_('PWA')
       .filter(function (p) { return p.nama && isAktif_(p.aktif); })
+      .map(function (p) { var s = String(p.status || '').toLowerCase(); p.status = (s === 'online' || s === 'semak' || s === 'luar') ? s : 'na'; return p; })
       .sort(function (a, b) { return (Number(a.urutan) || 999) - (Number(b.urutan) || 999); }),
     jadual: readSheet_('Jadual').filter(function (j) {
         // jika tab ada lajur "tarikh", papar hanya acara hari ini
@@ -111,7 +113,7 @@ function saveDashboard(payload) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    var sh = SpreadsheetApp.getActive().getSheetByName(name);
+    var sh = getSheet_(name);
     if (!sh) throw new Error('Tab tidak dijumpai: ' + name);
     var head = headers_(sh);
     if (!head.length) throw new Error('Tab ' + name + ' tiada pengepala (baris 1).');
@@ -130,6 +132,7 @@ function saveDashboard(payload) {
 
     var out = head.map(function (k) {
       var v = row[k];
+      if (v === undefined) { var al = ALIAS[k.toLowerCase()]; if (al) v = row[al]; }
       return v === undefined || v === null ? '' : v;
     });
     sh.appendRow(out);
@@ -145,7 +148,7 @@ function deleteRow_(name, row) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    var sh = SpreadsheetApp.getActive().getSheetByName(name);
+    var sh = getSheet_(name);
     if (!sh) throw new Error('Tab tidak dijumpai: ' + name);
     if (sh.getLastRow() < 2) return { ok: true, deleted: 0 };
     var head = headers_(sh);
@@ -179,7 +182,7 @@ function deleteRow_(name, row) {
  * Jalankan setupTriggers() sekali untuk semak pautan tab "PWA" setiap 10 minit.
  * Lajur "status" diisi: online | semak | luar */
 function semakPwa() {
-  var sh = SpreadsheetApp.getActive().getSheetByName('PWA');
+  var sh = getSheet_('PWA');
   if (!sh || sh.getLastRow() < 2) return;
   var head = headers_(sh);
   var cUrl = head.indexOf('pautan'), cSt = head.indexOf('status');
@@ -233,26 +236,74 @@ function headers_(sh) {
   return sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(normHeader_);
 }
 
-function fmtCell_(key, v) {
+/* Nama lajur lain yang diterima -> nama standard dashboard */
+var ALIAS = {
+  'mesej': 'teks', 'mesejtelegram': 'teks', 'pesanan': 'teks',
+  'messageid': 'id',
+  'masamula': 'mula', 'masabermula': 'mula', 'masatamat': 'tamat', 'masaakhir': 'tamat',
+  'namaaplikasi': 'nama', 'aplikasi': 'nama', 'namapwa': 'nama', 'namaapp': 'nama',
+  'url': 'pautan', 'link': 'pautan', 'pautanpwa': 'pautan',
+  'tajuktugasan': 'tajuk', 'tugasan': 'tajuk', 'tarikhakhir': 'akhir',
+  'pegawai': 'pic', 'kemajuanpct': 'kemajuan'
+};
+
+function getSheet_(name) {
+  var ss = SpreadsheetApp.getActive();
+  var sh = ss.getSheetByName(name);
+  if (sh) return sh;
+  var want = String(name).toLowerCase().replace(/\s+/g, '');
+  var all = ss.getSheets();
+  for (var i = 0; i < all.length; i++) {
+    if (all[i].getName().toLowerCase().replace(/\s+/g, '') === want) return all[i];
+  }
+  return null;
+}
+
+/* "8:00:00 AM" / "08:00" / "20.30" -> "HH:mm" */
+function parseTime_(s) {
+  var m = /(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?\s*([AaPp][Mm])?/.exec(String(s));
+  if (!m) return String(s);
+  var h = Number(m[1]), ap = (m[3] || '').toLowerCase();
+  if (ap === 'pm' && h < 12) h += 12;
+  if (ap === 'am' && h === 12) h = 0;
+  return (h < 10 ? '0' : '') + h + ':' + m[2];
+}
+
+function fmtCell_(key, v, display) {
   if (v instanceof Date) {
-    if (/^(masa|mula|tamat)$/.test(key) && v.getFullYear() < 1950) return Utilities.formatDate(v, TZ, 'HH:mm');
-    if (key === 'masa' && v.getFullYear() >= 1950) return v.toISOString();   // cap masa Telegram
+    // Sel masa sahaja (tahun 1899): guna teks paparan Sheet supaya minit tidak tersasar oleh zon masa
+    if (v.getFullYear() < 1950) return display !== undefined ? parseTime_(display) : Utilities.formatDate(v, TZ, 'HH:mm');
+    if (key === 'masa') return v.toISOString();   // cap masa Telegram
     return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
   }
   return v;
 }
 
 function readSheet_(name) {
-  var sh = SpreadsheetApp.getActive().getSheetByName(name);
+  var sh = getSheet_(name);
   if (!sh || sh.getLastRow() < 2) return [];
   var head = headers_(sh);
-  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, head.length).getValues();
+  var rng = sh.getRange(2, 1, sh.getLastRow() - 1, head.length);
+  var vals = rng.getValues(), disp = rng.getDisplayValues();
   var out = [];
   vals.forEach(function (r, idx) {
     if (r.every(function (c) { return c === '' || c === null; })) return;
     var o = { _row: idx + 2 };
-    head.forEach(function (k, i) { if (k) o[k] = fmtCell_(k, r[i]); });
+    head.forEach(function (k, i) { if (k) o[k] = fmtCell_(k, r[i], disp[idx][i]); });
+    head.forEach(function (k) {                       // tambah nama standard jika belum ada
+      var al = ALIAS[String(k).toLowerCase()];
+      if (al && (o[al] === undefined || o[al] === '')) o[al] = o[k];
+    });
+    if (o.messageId !== undefined && o.messageId !== '') o.id = (o.chatId || '') + '|' + o.messageId;
     out.push(o);
   });
   return out;
+}
+
+/* Semak tab & pengepala yang dilihat oleh skrip: ?api=debug&key=... */
+function debugInfo_(key) {
+  checkKey_(key);
+  return SpreadsheetApp.getActive().getSheets().map(function (sh) {
+    return { tab: sh.getName(), baris: sh.getLastRow(), pengepala: sh.getLastColumn() ? sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0] : [] };
+  });
 }

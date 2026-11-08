@@ -620,7 +620,7 @@ function applyData(d, live){
   $("#upd").textContent = live ? `dikemas kini ${hhmm(new Date())}` : "data contoh";
   $("#alert").hidden = true;
   const firstLoad = seenMsg.size === 0;
-  const key = m => m.id || (String(m.raw ?? m.masa) + "|" + m.teks);
+  const key = m => m.id || (String(m.raw ?? m.masa) + "|" + (m.teks || m.mesej));
   const fresh = new Set(d.telegram.filter(m => !firstLoad && !seenMsg.has(key(m))).map(key));
   d.telegram.forEach(m => seenMsg.add(key(m)));
   setFeed(d.telegram);
@@ -1040,7 +1040,7 @@ function msgHTML(m, isNew){
   return `<li class="msg ${isNew?"new":""}">
     <time class="mono">${hhmm(m.masa)}</time>
     <div class="who"><span class="grp ${grpClass(m.kumpulan)}">${esc(m.kumpulan)}</span><b>${esc(m.pengirim)}</b></div>
-    <p>${esc(m.teks)}</p>
+    <p>${esc(m.teks || m.mesej)}</p>
   </li>`;
 }
 function renderFeed(fresh, key){
