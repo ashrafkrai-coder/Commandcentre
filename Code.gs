@@ -12,7 +12,7 @@
  *
  * TETAPAN SEKALI SAHAJA:
  *   Project Settings > Script properties > tambah
- *     CC_KEY    = kunci akses rahsia (dimasukkan guru pada dashboard)
+ *     CC_KEY    = kunci akses rahsia (PILIHAN; jika kosong/tiada, dashboard terbuka tanpa kunci)
  *     SEKOLAH   = SMK Taman Medan        (pilihan)
  *     REFRESH   = 30                      (pilihan, saat)
  *
@@ -206,9 +206,9 @@ function json_(o) {
 }
 
 function checkKey_(key) {
-  var real = PropertiesService.getScriptProperties().getProperty('CC_KEY');
-  if (!real) throw new Error('CC_KEY belum ditetapkan dalam Script properties');
-  if (!key || String(key) !== real) throw new Error('unauthorized');
+  var real = String(PropertiesService.getScriptProperties().getProperty('CC_KEY') || '').trim();
+  if (!real) return;   // CC_KEY kosong = tiada kunci diperlukan (akses terbuka)
+  if (!key || String(key).trim() !== real) throw new Error('unauthorized');
 }
 
 function isAktif_(v) {

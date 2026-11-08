@@ -585,6 +585,7 @@ const GAS = typeof google !== "undefined" && google.script && google.script.run;
 const API_URL = ((window.CC_CONFIG && window.CC_CONFIG.API_URL) || "").trim();     // versi PWA
 const LIVE = !!(GAS || API_URL);
 let memKey = "";
+let NEED_KEY = false;   // jadi true hanya jika pelayan minta kunci (CC_KEY ditetapkan)
 const getKey = () => store.get("cc-key", "") || memKey;
 const setKey = k => { memKey = k; store.set("cc-key", k); };
 let DATA = null, feed = [], mesejBaru = 0, refreshSec = 30, seenMsg = new Set();
@@ -628,10 +629,10 @@ function applyData(d, live){
 function loadData(){
   if (!LIVE) return;
   const key = getKey();
-  if (!key) { askKey(); return; }
+  if (!key && NEED_KEY) { askKey(); return; }
   const fail = err => {
     const msg = String((err && err.message) || err);
-    if (/unauthorized/i.test(msg)) { setKey(""); askKey("Kunci akses tidak sah. Sila cuba lagi."); return; }
+    if (/unauthorized/i.test(msg)) { NEED_KEY = true; setKey(""); askKey("Kunci akses tidak sah. Sila cuba lagi."); return; }
     if (!DATA || !DATA.loaded) { const c = store.get("cc-last", ""); if (c) { try { applyData(JSON.parse(c), true); } catch(e){} } }
     $("#alert").innerHTML = `<b>Gagal membaca data.</b> ${navigator.onLine === false ? "Tiada sambungan internet. " : esc(msg) + ". "}Data terakhir dipaparkan; cuba lagi dalam ${refreshSec} saat.`;
     $("#alert").hidden = false;
@@ -711,7 +712,7 @@ async function saveTaskToSheet(task){
 }
 
 async function syncQueuedTasks(){
-  if (!LIVE || !getKey()) return;
+  if (!LIVE || (NEED_KEY && !getKey())) return;
   await syncQueue(TASK_QUEUE, t => saveTaskToSheet(t), () => loadData());
   await syncQueue(RELIEF_QUEUE, r => saveReliefToSheet(r), () => loadData());
 }
@@ -732,7 +733,7 @@ async function syncQueue(storageKey, saveItem, after){
 }
 
 function openEntry(){
-  if (LIVE && !getKey()) { askKey(); return; }
+  if (LIVE && NEED_KEY && !getKey()) { askKey(); return; }
   $("#entryStatus").textContent = "";
   $("#entryStatus").className = "entry-status";
   $("#taskDue").value = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
@@ -812,7 +813,7 @@ async function saveReliefToSheet(record){
 }
 
 function openReliefModal(){
-  if (LIVE && !getKey()) { askKey(); return; }
+  if (LIVE && NEED_KEY && !getKey()) { askKey(); return; }
   $("#reliefStatusText").textContent = "";
   $("#reliefStatusText").className = "entry-status";
   $("#reliefDate").value = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
