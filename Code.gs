@@ -22,10 +22,10 @@
  *
  * API (GET, JSON, CORS dibenarkan oleh Apps Script):
  *   ?api=data&key=KUNCI
- *   ?api=save&action=append&sheet=Tugasan|Relief|Telegram&type=...&key=KUNCI&data={JSON}
+ *   ?api=save&action=append|update|delete&sheet=Tugasan|Relief|Telegram|PWA&type=...&key=KUNCI&data={JSON}
  */
 
-var SHEETS_SAVE = ['Tugasan', 'Relief', 'Telegram'];   // tab yang boleh ditulis dari dashboard
+var SHEETS_SAVE = ['Tugasan', 'Relief', 'Telegram', 'PWA'];   // tab yang boleh ditulis dari dashboard
 var TZ = Session.getScriptTimeZone() || 'Asia/Kuala_Lumpur';
 
 /* ---------------- Titik masuk ---------------- */
@@ -141,7 +141,7 @@ function saveDashboard(payload) {
   }
 }
 
-var KEYCOL = { 'Tugasan': 'tajuk', 'Relief': 'kelas' };   // lajur penentu baris kosong
+var KEYCOL = { 'Tugasan': 'tajuk', 'Relief': 'kelas', 'PWA': 'nama' };   // lajur penentu baris kosong
 
 /* Tulis rekod ke baris kosong pertama (templat Sheet), atau tambah di hujung dengan menyalin formula. */
 function writeNewRow_(sh, name, head, row) {
@@ -384,7 +384,8 @@ function headers_(sh) {
 var DEFAULT_HEADERS = {
   'Tugasan': ['tajuk', 'pic', 'unit', 'akhir', 'status', 'kemajuan', 'localId'],
   'Relief': ['tarikh', 'masa', 'kelas', 'guruTidakHadir', 'guruRelief', 'status', 'nota', 'localId'],
-  'Telegram': ['masa', 'kumpulan', 'pengirim', 'mesej', 'chatId', 'messageId']
+  'Telegram': ['masa', 'kumpulan', 'pengirim', 'mesej', 'chatId', 'messageId'],
+  'PWA': ['nama', 'pautan', 'kategori', 'aktif', 'urutan', 'catatan']
 };
 
 function createSheet_(name) {

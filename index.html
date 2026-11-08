@@ -237,7 +237,7 @@ tr.row:hover td{background:rgba(95,212,255,.035)}
 .dot::before{content:""; width:8px; height:8px; border-radius:50%; background:currentColor}
 .d-online{color:var(--ok)} .d-semak{color:var(--warn)} .d-luar{color:var(--crit)}
 .tile.add{border-style:dashed; color:var(--dim); justify-content:center; align-items:center; text-align:center; font:500 12px/1.4 var(--f-mono); cursor:default}
-.tile.add:hover{transform:none; border-color:var(--line2)}
+.tile.add:hover{transform:none; border-color:var(--ice)}
 .tile.add b{display:block; font:700 22px/1 var(--f-display); color:var(--ice); margin-bottom:4px}
 
 /* ---------- Jadual ---------- */
@@ -369,6 +369,11 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
 .rbtn.ok:hover{border-color:var(--ok); color:var(--ok)}
 .rbtn.del:hover{border-color:var(--crit); color:var(--crit)}
 .rbtn:disabled{opacity:.5; cursor:wait}
+.rbtn-danger{margin-right:auto; color:var(--crit); border-color:var(--crit)}
+.tw .edit{position:absolute; right:34px; bottom:4px; background:transparent; border:0; color:var(--faint); font-size:15px; line-height:1; width:32px; height:36px; cursor:pointer}
+.tw .edit:hover{color:var(--ice)}
+button.tile{font:inherit; text-align:center}
+.tile.add{cursor:pointer}
 .relief-card.st-perlu .pill{color:var(--warn); background:var(--warn-soft)}
 .relief-card.st-tugas .pill{color:var(--ice); background:var(--ice-soft)}
 .relief-card.done .pill{color:var(--ok); background:var(--ok-soft)}
@@ -471,9 +476,9 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
   </section>
 
   <section class="panel" data-p="pwa" aria-labelledby="h-pwa">
-    <div class="ph"><h2 id="h-pwa">Pelancar Aplikasi PWA <small id="pcount"></small></h2></div>
+    <div class="ph"><h2 id="h-pwa">Pelancar Aplikasi PWA <small id="pcount"></small></h2><button class="btn btn-primary" id="addPwaBtn" type="button">+ Aplikasi</button></div>
     <div class="tiles" id="tiles"></div>
-    <div class="pf">Sumber: <b>Tab "PWA"</b> (Nama, Pautan, Kategori, Aktif, Urutan) · status disemak setiap 10 minit</div>
+    <div class="pf">Sumber: <b>Tab "PWA"</b> · tambah &amp; edit terus di sini, atau terus dalam Sheet</div>
   </section>
 
   <section class="panel" data-p="relief" aria-labelledby="h-relief">
@@ -611,6 +616,44 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
       </form>
     </div>
 
+<div class="entry-modal" id="pwaModal" hidden>
+  <form class="entry-box" id="pwaForm">
+    <div class="entry-head">
+      <div><div class="eyebrow">Pelancar Aplikasi</div><h2>Tambah Aplikasi PWA</h2></div>
+      <button class="entry-close" id="pwaClose" type="button" aria-label="Tutup">&times;</button>
+    </div>
+    <div class="entry-grid">
+      <div class="entry-field full">
+        <label for="pwaName">Nama aplikasi</label>
+        <input id="pwaName" required maxlength="80" placeholder="Contoh: e-Kehadiran Murid">
+      </div>
+      <div class="entry-field full">
+        <label for="pwaUrl">Pautan (URL)</label>
+        <input id="pwaUrl" required type="url" inputmode="url" maxlength="300" placeholder="https://contoh.vercel.app/">
+      </div>
+      <div class="entry-field">
+        <label for="pwaCat">Kategori</label>
+        <input id="pwaCat" list="pwaCats" maxlength="40" placeholder="Umum / Personel">
+        <datalist id="pwaCats"></datalist>
+      </div>
+      <div class="entry-field">
+        <label for="pwaOrder">Urutan</label>
+        <input id="pwaOrder" type="number" min="1" step="1" inputmode="numeric">
+      </div>
+      <div class="entry-field">
+        <label for="pwaActive">Aktif</label>
+        <select id="pwaActive"><option selected>Ya</option><option>Tidak</option></select>
+      </div>
+      <p class="entry-status" id="pwaStatusText" aria-live="polite"></p>
+    </div>
+    <div class="entry-actions">
+      <button class="btn rbtn-danger" id="pwaDelete" type="button" hidden>Padam</button>
+      <button class="btn" id="pwaCancel" type="button">Batal</button>
+      <button class="btn btn-primary" id="pwaSubmit" type="submit">Simpan &amp; Sync Sheet</button>
+    </div>
+  </form>
+</div>
+
 <div class="gate" id="gate" hidden>
   <form class="gate-box" id="gateForm" autocomplete="off">
     <div class="eyebrow">Akses Terhad</div>
@@ -740,14 +783,14 @@ function toast(msg, type, o){
 }
 const hiddenKeys = new Set();   // item yang disembunyikan semasa tempoh "Buat asal"
 function softDelete(key, label, commit){
-  hiddenKeys.add(key); renderAll();
+  hiddenKeys.add(key); refreshViews();
   toast(label + " dipadam", "ok", {
     ms: 6000, actionLabel: "Buat asal",
-    onAction: () => { hiddenKeys.delete(key); renderAll(); },
+    onAction: () => { hiddenKeys.delete(key); refreshViews(); },
     onExpire: async () => {
       try { await commit(); }
-      catch(err) { hiddenKeys.delete(key); renderAll(); toast("Gagal memadam: " + (err.message || err), "err"); if (LIVE) loadData(); return; }
-      hiddenKeys.delete(key); renderAll(); if (LIVE) loadData();
+      catch(err) { hiddenKeys.delete(key); refreshViews(); toast("Gagal memadam: " + (err.message || err), "err"); if (LIVE) loadData(); return; }
+      hiddenKeys.delete(key); refreshViews(); if (LIVE) loadData();
     }
   });
 }
@@ -800,6 +843,7 @@ function setFeed(list){
 function applyData(d, live){
   d = mergeLocalTasks(d);
   d = mergeLocalRelief(d);
+  if (!LIVE) { const lp = readList(DEMO_PWA); if (lp.length) d = { ...d, pwa: [...(d.pwa || []), ...lp.map(x => ({ ...x }))] }; }   // aplikasi PWA tambahan (mod contoh)
   DATA = prepare(d); DATA.loaded = true;
   refreshSec = d.refresh || 30;
   $("#school").textContent = d.sekolah;
@@ -1493,8 +1537,9 @@ let pins = readList("cc-pins");   // aplikasi yang disematkan (nama)
 const favicon = u => `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(u)}`;
 function renderPwa(){
   if (isLoading()) { $("#pcount").textContent = ""; $("#tiles").innerHTML = Array(4).fill('<div class="sk sk-tile"></div>').join(""); return; }
-  $("#pcount").textContent = `${DATA.pwa.length} aplikasi`;
-  const list = [...DATA.pwa].sort((a, b) => pins.includes(b.nama) - pins.includes(a.nama));   // yang disematkan dahulu; susunan asal kekal
+  const vis = visiblePwa();
+  $("#pcount").textContent = `${vis.length} aplikasi`;
+  const list = [...vis].sort((a, b) => pins.includes(b.nama) - pins.includes(a.nama));   // yang disematkan dahulu; susunan asal kekal
   $("#tiles").innerHTML = list.map(p => {
     const ok = /^https?:\/\//i.test(p.pautan || ""), pinned = pins.includes(p.nama);
     const icon = ok ? (p.ikon === undefined ? favicon(p.pautan) : p.ikon) : "";   // ikon dari pelayan (tag link laman); sandaran: perkhidmatan favicon
@@ -1506,9 +1551,13 @@ function renderPwa(){
       <span class="cat">${esc(p.kategori)}</span>
     </a>
     <button class="pin" type="button" data-pin="${esc(p.nama)}" aria-pressed="${pinned}" aria-label="${pinned ? "Nyahsemat" : "Sematkan"} ${esc(p.nama)}" title="${pinned ? "Nyahsemat" : "Sematkan di atas"}">${pinned ? "★" : "☆"}</button>
-    </div>`; }).join("") + `<div class="tile add"><div><b>+</b>Tambah baris dalam tab "PWA"</div></div>`;
+    <button class="edit" type="button" data-edit="${esc(p.nama)}" aria-label="Edit ${esc(p.nama)}" title="Edit aplikasi">&#9998;</button>
+    </div>`; }).join("") + `<button class="tile add" type="button" data-addpwa="1"><div><b>+</b>Tambah aplikasi</div></button>`;
 }
 $("#tiles").addEventListener("click", e => {
+  if (e.target.closest("[data-addpwa]")) { openPwaModal(); return; }
+  const ed = e.target.closest(".edit");
+  if (ed) { const p = (DATA.pwa || []).find(x => x.nama === ed.dataset.edit); if (p) openPwaModal(p); return; }
   const pin = e.target.closest(".pin");
   if (pin) {
     const n = pin.dataset.pin;
@@ -1516,6 +1565,106 @@ $("#tiles").addEventListener("click", e => {
     writeList("cc-pins", pins); renderPwa(); return;
   }
   const a = e.target.closest("a.tile"); if (a && a.getAttribute("href") === "#") e.preventDefault();
+});
+
+/* ---------- Tambah / edit / padam aplikasi PWA (sync ke tab "PWA") ---------- */
+const DEMO_PWA = "cc-demo-pwa";
+let pwaEditing = null;   // aplikasi yang sedang diedit (null = tambah baru)
+const visiblePwa = () => (DATA.pwa || []).filter(p => !hiddenKeys.has("p:" + p.nama));
+
+async function pwaApi(action, row){
+  if (GAS) {
+    return await new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)
+        .saveDashboard({ action, sheet:"PWA", type:"pwa", key:getKey(), row });
+    });
+  }
+  const params = new URLSearchParams({ api:"save", action, sheet:"PWA", type:"pwa", key:getKey(), data:JSON.stringify(row) });
+  const response = await fetch(`${API_URL}?${params.toString()}`, { cache:"no-store" });
+  const result = await response.json().catch(() => ({ error:"Respons API tidak sah" }));
+  if (!response.ok || result.error) throw new Error(result.error || `Ralat HTTP ${response.status}`);
+  return result;
+}
+
+function openPwaModal(p){
+  if (LIVE && NEED_KEY && !getKey()) { askKey(); return; }
+  pwaEditing = p || null;
+  $("#pwaStatusText").textContent = ""; $("#pwaStatusText").className = "entry-status";
+  $("#pwaModal .entry-head h2").textContent = pwaEditing ? "Edit Aplikasi PWA" : "Tambah Aplikasi PWA";
+  $("#pwaSubmit").textContent = pwaEditing ? "Simpan Perubahan" : "Simpan & Sync Sheet";
+  $("#pwaDelete").hidden = !pwaEditing;
+  const cats = [...new Set((DATA.pwa || []).map(x => x.kategori).filter(Boolean))];
+  $("#pwaCats").innerHTML = cats.map(c => `<option value="${esc(c)}"></option>`).join("");
+  if (pwaEditing) {
+    $("#pwaName").value = pwaEditing.nama || "";
+    $("#pwaUrl").value = pwaEditing.pautan || "";
+    $("#pwaCat").value = pwaEditing.kategori || "";
+    $("#pwaOrder").value = pwaEditing.urutan === undefined ? "" : pwaEditing.urutan;
+    $("#pwaActive").value = /^(tidak|false|no|0|x)$/i.test(String(pwaEditing.aktif || "")) ? "Tidak" : "Ya";
+  } else {
+    const max = Math.max(0, ...(DATA.pwa || []).map(x => Number(x.urutan) || 0));
+    $("#pwaOrder").value = max + 1;
+    $("#pwaActive").value = "Ya";
+  }
+  $("#pwaModal").hidden = false;
+  setTimeout(() => $("#pwaName").focus(), 30);
+}
+function closePwaModal(){ pwaEditing = null; $("#pwaModal").hidden = true; $("#pwaForm").reset(); }
+$("#addPwaBtn").addEventListener("click", () => openPwaModal());
+$("#pwaClose").addEventListener("click", closePwaModal);
+$("#pwaCancel").addEventListener("click", closePwaModal);
+$("#pwaModal").addEventListener("click", e => { if (e.target === $("#pwaModal")) closePwaModal(); });
+
+$("#pwaForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = {
+    nama: $("#pwaName").value.trim(),
+    pautan: $("#pwaUrl").value.trim(),
+    kategori: $("#pwaCat").value.trim(),
+    aktif: $("#pwaActive").value,
+    urutan: $("#pwaOrder").value.trim() === "" ? "" : Number($("#pwaOrder").value),
+  };
+  const fail = m => { $("#pwaStatusText").className = "entry-status error"; $("#pwaStatusText").textContent = m; };
+  if (!f.nama) return fail("Nama aplikasi diperlukan.");
+  if (!/^https?:\/\//i.test(f.pautan)) return fail("Pautan mesti bermula dengan https:// (atau http://).");
+  const dup = (DATA.pwa || []).some(x => String(x.nama || "").trim().toLowerCase() === f.nama.toLowerCase() && x !== pwaEditing);
+  if (dup) return fail("Aplikasi dengan nama ini sudah ada.");
+  const submit = $("#pwaSubmit");
+  submit.disabled = true;
+  $("#pwaStatusText").className = "entry-status";
+  $("#pwaStatusText").textContent = LIVE ? "Menghantar ke Google Sheet…" : "Menyimpan…";
+  try {
+    if (!LIVE) {
+      if (pwaEditing) Object.assign(pwaEditing, f);
+      else { const l = readList(DEMO_PWA); l.push({ ...f, status:"na" }); writeList(DEMO_PWA, l); applyData(SAMPLE, false); }
+    } else if (pwaEditing) {
+      await pwaApi("update", { ...f, _row: pwaEditing._row || "", _check: { nama: pwaEditing.nama } });
+      Object.assign(pwaEditing, f);
+    } else {
+      await pwaApi("append", f);
+    }
+    toast(pwaEditing ? "Aplikasi dikemas kini" + (LIVE ? " ke Sheet" : "") : "Aplikasi ditambah" + (LIVE ? " ke Sheet" : ""), "ok");
+    closePwaModal(); renderPwa(); renderKpis();
+    if (LIVE) loadData();
+  } catch(err) {
+    fail(String(err.message || err));
+    toast("Gagal menyimpan aplikasi: " + (err.message || err), "err");
+  }
+  submit.disabled = false;
+});
+
+$("#pwaDelete").addEventListener("click", () => {
+  const p = pwaEditing; if (!p) return;
+  closePwaModal();
+  softDelete("p:" + p.nama, "Aplikasi " + p.nama, async () => {
+    if (LIVE) {
+      const res = await pwaApi("delete", { _row: p._row || "", _check: { nama: p.nama } });
+      if (res && res.found === 0) throw new Error("Rekod tidak dijumpai dalam Sheet (mungkin sudah dipadam atau baris telah berubah).");
+    } else {
+      writeList(DEMO_PWA, readList(DEMO_PWA).filter(x => x.nama !== p.nama));
+    }
+    DATA.pwa = DATA.pwa.filter(x => x !== p && x.nama !== p.nama);
+  });
 });
 
 /* ---------- Jadual ---------- */
@@ -1559,6 +1708,7 @@ function cycle(){
   if (countdown <= 0){ countdown = refreshSec; LIVE ? loadData() : renderAll(); }
   $("#sync").textContent = `${countdown}s`;
 }
+function refreshViews(){ renderAll(); renderPwa(); }
 function renderAll(){ renderKpis(); renderFocus(); renderTasks(); renderTimeline(); renderRelief(); }
 
 /* ---------- Tetingkap terapung Clock In/Out (boleh diseret, diubah saiz, dilipat) ---------- */
