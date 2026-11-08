@@ -97,11 +97,13 @@ h1 span{color:var(--ice)}
 .relief-note{margin:6px 0 0; color:var(--fg)}
 .relief-empty{padding:12px 14px 18px; color:var(--dim); font:500 12px/1.5 var(--f-mono)}
 .clock-embed{display:flex; flex-direction:column; padding:14px; gap:10px}
-.clock-frame-wrap{position:relative; height:160px; overflow:hidden; border:1px solid var(--line2); background:white}
-.clock-frame-wrap iframe{width:100%; height:100%; border:0; background:white}
+.clock-frame-wrap{position:relative; height:520px; overflow:auto; overflow-x:auto; overscroll-behavior:contain; border:1px solid var(--line2); background:#dff3f7}
+.clock-frame-wrap iframe{display:block; width:390px; height:844px; min-width:390px; border:0; background:white}
+.clock-scroll{width:390px; height:844px; margin:0 auto}
+.clock-loading{position:absolute; inset:0; display:grid; place-items:center; color:#36566a; font:600 12px/1.4 var(--f-mono)}
 .clock-frame-wrap.mobile-preview iframe{transform-origin:0 0}
 .clock-actions{display:flex; justify-content:flex-end}
-@media (max-width:520px){.entry-grid{grid-template-columns:1fr}.entry-field.full{grid-column:auto}.clock-frame-wrap{height:140px}}
+@media (max-width:520px){.entry-grid{grid-template-columns:1fr}.entry-field.full{grid-column:auto}.clock-frame-wrap{height:520px}}
 
 .alert{border:1px solid var(--crit); background:var(--crit-soft); color:var(--fg); padding:10px 14px; margin-bottom:16px; font:500 12.5px/1.4 var(--f-mono)}
 .alert b{color:var(--crit)}
@@ -335,12 +337,15 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
     </div>
     <div class="clock-embed">
       <div class="clock-frame-wrap">
-        <iframe
-          src="https://sekolahdigit.com/clock-in-out/geolocation"
+      <div class="clock-loading" id="clockLoading">Memuatkan paparan mobile…</div>
+      <div class="clock-scroll">
+      <iframe
+      src="https://sekolahdigit.com/clock-in-out/geolocation"
           title="Clock In/Out Geolocation Sekolah Digit"
           loading="lazy"
           allow="geolocation; camera"
           referrerpolicy="strict-origin-when-cross-origin"></iframe>
+        </div>
       </div>
     </div>
     <div class="pf">Paparan terbenam · akses lokasi memerlukan <b>HTTPS</b> dan kebenaran pengguna</div>
@@ -1043,6 +1048,25 @@ function cycle(){
 }
 function renderAll(){ renderKpis(); renderTasks(); renderTimeline(); renderRelief(); }
 
+/* Paparkan laman Clock In/Out dalam viewport telefon sebenar. */
+function fitClockMobileView(){
+  const frame = $(".clock-frame-wrap");
+  const iframe = frame && frame.querySelector("iframe");
+  if (!frame || !iframe) return;
+  iframe.style.width = "390px";
+  iframe.style.height = "844px";
+  const scroller = frame.querySelector(".clock-scroll");
+  if (scroller && frame.clientWidth < 390) scroller.style.marginLeft = "0";
+  else if (scroller) scroller.style.marginLeft = "auto";
+}
+window.addEventListener("resize", fitClockMobileView);
+window.addEventListener("load", () => setTimeout(fitClockMobileView, 100));
+const clockIframe = $(".clock-frame-wrap iframe");
+if (clockIframe) clockIframe.addEventListener("load", () => {
+  $("#clockLoading").hidden = true;
+  fitClockMobileView();
+});
+
 /* ---------- Mod TV ---------- */
 let wakeLock = null;
 $("#tvBtn").addEventListener("click", async () => {
@@ -1060,6 +1084,7 @@ tickClock();
 setInterval(tickClock, 1000);
 setInterval(cycle, 1000);
 setInterval(pushDemoMessage, 15000);
+fitClockMobileView();
 </script>
 
 <script>

@@ -1,0 +1,17 @@
+- generic [ref=f1e10]:
+  - img "Digit Sekolah" [ref=f1e15]
+  - generic [ref=f1e16]:
+    - heading "Selamat Datang" [level=1] [ref=f1e20]
+    - heading "Digit Sekolah Sistem" [level=2] [ref=f1e27]
+    - paragraph [ref=f1e28]: Sistem Kawalan Sekolah Digital
+  - generic [ref=f1e29]:
+    - generic [ref=f1e30]:
+      - generic [ref=f1e31]: Email Address
+      - textbox "nama@digitsekolah.com" [ref=f1e33]
+    - generic [ref=f1e34]:
+      - generic [ref=f1e35]: Kata Laluan
+      - generic [ref=f1e36]:
+        - textbox "••••••••" [ref=f1e37]
+        - button [ref=f1e38] [cursor=pointer]
+    - button "Log Masuk" [ref=f1e42] [cursor=pointer]
+  - paragraph [ref=f1e49]: Powered by Zabra Solutions
