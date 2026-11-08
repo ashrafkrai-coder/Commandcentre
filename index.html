@@ -1497,10 +1497,11 @@ function renderPwa(){
   const list = [...DATA.pwa].sort((a, b) => pins.includes(b.nama) - pins.includes(a.nama));   // yang disematkan dahulu; susunan asal kekal
   $("#tiles").innerHTML = list.map(p => {
     const ok = /^https?:\/\//i.test(p.pautan || ""), pinned = pins.includes(p.nama);
+    const icon = ok ? (p.ikon === undefined ? favicon(p.pautan) : p.ikon) : "";   // ikon dari pelayan (tag link laman); sandaran: perkhidmatan favicon
     return `<div class="tw">
     <a class="tile" href="${ok ? esc(p.pautan) : "#"}" ${ok ? 'target="_blank" rel="noopener"' : 'title="Pautan belum diisi atau tidak sah (mesti bermula https://)"'}>
       <span class="dot d-${p.status}">${STL[p.status]||""}</span>
-      <span class="ico">${esc(initials(p.nama))}${ok ? `<img src="${esc(favicon(p.pautan))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</span>
+      <span class="ico">${esc(initials(p.nama))}${icon ? `<img src="${esc(icon)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</span>
       <span class="nm">${esc(p.nama)}</span>
       <span class="cat">${esc(p.kategori)}</span>
     </a>

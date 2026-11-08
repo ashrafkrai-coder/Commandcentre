@@ -87,10 +87,10 @@ function dataDashboard(key) {
     }),
     relief: readSheet_('Relief').filter(function (r) { return r.kelas; })
       .sort(function (a, b) { return String(b.tarikh + b.masa).localeCompare(String(a.tarikh + a.masa)); }),
-    pwa: readSheet_('PWA')
+    pwa: withIcons_(readSheet_('PWA')
       .filter(function (p) { return p.nama && isAktif_(p.aktif); })
       .map(function (p) { var s = String(p.status || '').toLowerCase(); p.status = (s === 'online' || s === 'semak' || s === 'luar') ? s : 'na'; return p; })
-      .sort(function (a, b) { return (Number(a.urutan) || 999) - (Number(b.urutan) || 999); }),
+      .sort(function (a, b) { return (Number(a.urutan) || 999) - (Number(b.urutan) || 999); })),
     jadual: readSheet_('Jadual').filter(function (j) {
         // jika tab ada lajur "tarikh", papar hanya acara hari ini
         return j.acara && (!j.tarikh || j.tarikh === Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'));
@@ -238,6 +238,77 @@ function updateRow_(name, row) {
   return res;
 }
 
+/* ---------------- Ikon aplikasi PWA ----------------
+ * Ikon dibaca daripada tag <link rel="icon|apple-touch-icon"> setiap laman, lalu disimpan dalam cache 6 jam.
+ * Untuk memaksa ikon tertentu, isi lajur "Ikon" (URL gambar) dalam tab PWA. */
+function absUrl_(base, href) {
+  href = String(href).trim();
+  if (/^https?:\/\//i.test(href)) return href;
+  var m = /^(https?:)\/\/([^\/?#]+)(\/[^?#]*)?/i.exec(base);
+  if (!m) return '';
+  var origin = m[1] + '//' + m[2], path = m[3] || '/';
+  if (href.indexOf('//') === 0) return m[1] + href;
+  if (href.charAt(0) === '/') return origin + href;
+  var parts = (path.replace(/[^\/]*$/, '') + href).split('/'), out = [];
+  parts.forEach(function (p) { if (p === '..') out.pop(); else if (p !== '.' && p !== '') out.push(p); });
+  return origin + '/' + out.join('/');
+}
+
+function pickIcon_(html, base) {
+  var links = html.match(/<link\b[^>]*>/gi) || [], best = '', bestScore = -1;
+  links.forEach(function (tag) {
+    var rel = (/rel\s*=\s*["']([^"']*)["']/i.exec(tag) || [])[1];
+    var href = (/href\s*=\s*["']([^"']*)["']/i.exec(tag) || [])[1];
+    if (!rel || !href || !/icon/i.test(rel) || /mask-icon/i.test(rel)) return;
+    var sz = (/sizes\s*=\s*["'](\d+)x/i.exec(tag) || [])[1];
+    var score = (/apple-touch-icon/i.test(rel) ? 1000 : 0) + (Number(sz) || 0) + (/\.svg/i.test(href) ? 50 : 0);
+    if (score > bestScore) { best = href; bestScore = score; }
+  });
+  return best ? absUrl_(base, best) : '';
+}
+
+function md5_(s) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, s).map(function (b) {
+    return ('0' + (b & 0xff).toString(16)).slice(-2);
+  }).join('');
+}
+
+function withIcons_(list) {
+  try {
+    var cache = CacheService.getScriptCache(), keyOf = {}, keys = [];
+    list.forEach(function (p) {
+      if (p.ikon || !/^https?:\/\//i.test(p.pautan || '')) return;
+      var k = 'ico2:' + md5_(p.pautan);
+      keyOf[p.pautan] = k; keys.push(k);
+    });
+    var hit = keys.length ? cache.getAll(keys) : {};
+    var miss = list.filter(function (p) { return keyOf[p.pautan] && hit[keyOf[p.pautan]] === undefined; });
+    if (miss.length) {
+      var res = UrlFetchApp.fetchAll(miss.map(function (p) {
+        return { url: p.pautan, muteHttpExceptions: true, followRedirects: true };
+      }));
+      var put = {};
+      miss.forEach(function (p, i) {
+        var ico = '';
+        try { if (res[i].getResponseCode() < 400) ico = pickIcon_(res[i].getContentText().slice(0, 60000), p.pautan); } catch (e) {}
+        hit[keyOf[p.pautan]] = ico || '-';
+        put[keyOf[p.pautan]] = ico || '-';
+      });
+      cache.putAll(put, 21600);
+    }
+    list.forEach(function (p) {
+      if (!p.ikon && keyOf[p.pautan]) { var v = hit[keyOf[p.pautan]]; p.ikon = v === '-' ? '' : v; }
+    });
+  } catch (e) { /* ikon gagal diselesaikan: dashboard guna ikon sandaran */ }
+  return list;
+}
+
+/* Jalankan SEKALI dari editor (pilih fungsi ini > Run) untuk memberi kebenaran capaian laman luar. */
+function izinkanIkon() {
+  UrlFetchApp.fetch('https://www.google.com/', { muteHttpExceptions: true });
+  CacheService.getScriptCache().put('izin', '1', 60);
+}
+
 /* ---------------- Semakan status PWA (pilihan) ----------------
  * Jalankan setupTriggers() sekali untuk semak pautan tab "PWA" setiap 10 minit.
  * Lajur "status" diisi: online | semak | luar */
@@ -290,7 +361,7 @@ var CANON = {
   'chatid': 'chatId', 'messageid': 'messageId',
   'namaaplikasi': 'nama', 'pautanurl': 'pautan',
   'masamula': 'mula', 'masatamat': 'tamat',
-  'tekspengumuman': 'teks', 'papardidashboard': 'papar'
+  'ikonurl': 'ikon', 'tekspengumuman': 'teks', 'papardidashboard': 'papar'
 };
 
 /* "Guru Tidak Hadir" / "guru_tidak_hadir" -> guruTidakHadir */
