@@ -115,6 +115,9 @@ h1 span{color:var(--ice)}
 .relief-del:disabled{opacity:.5; cursor:wait}
 .task-ops{white-space:nowrap; text-align:right}
 .task-ops button{background:transparent; border:1px solid var(--line2); color:var(--dim); padding:5px 8px; margin-left:4px; font:600 10.5px/1 var(--f-mono); letter-spacing:.06em; text-transform:uppercase; cursor:pointer}
+.task-ops a{display:inline-block; border:1px solid var(--line2); color:var(--ice); padding:5px 8px; margin-left:4px; font:600 10.5px/1 var(--f-mono); letter-spacing:.06em; text-transform:uppercase; text-decoration:none}
+.task-ops a:hover{border-color:var(--ice)}
+.src{display:inline-block; margin-left:6px; font:700 9.5px/1 var(--f-mono); letter-spacing:.08em; color:var(--info); border:1px solid var(--info); padding:2px 4px; vertical-align:2px; text-transform:uppercase}
 .task-ops button:hover{border-color:var(--ice); color:var(--ice)}
 .task-ops button.del:hover{border-color:var(--crit); color:var(--crit)}
 .task-ops button:disabled{opacity:.5; cursor:wait}
@@ -407,6 +410,7 @@ button.tile{font:inherit; text-align:center}
   .btn,.chip,.task-ops button,.rbtn,.relief-del,.fold-btn{min-height:44px}
   .fold-btn{width:44px}
   .tools input,.tools select{min-height:44px}
+  .task-ops a{min-height:44px; display:inline-flex; align-items:center}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none !important; transition:none !important}
@@ -465,7 +469,7 @@ button.tile{font:inherit; text-align:center}
         <tbody id="tbody"></tbody>
       </table>
     </div>
-    <div class="pf">Sumber: <b>Tab "Tugasan"</b> dalam Google Sheet · <span id="upd">data contoh</span></div>
+    <div class="pf">Sumber: <b>Tab "Tugasan"</b> dalam Google Sheet · <span id="upd">data contoh</span><span id="crNote"></span></div>
   </section>
 
   <section class="panel" data-p="tg" aria-labelledby="h-tg">
@@ -851,6 +855,8 @@ function applyData(d, live){
   $("#mode").className = live ? "live-ok" : "demo";
   $("#tgsrc").textContent = live ? "dari tab Telegram" : "demo";
   $("#upd").textContent = live ? `dikemas kini ${hhmm(new Date())}` : "data contoh";
+  const cr = d.classroom;   // tugasan Google Classroom (jika diaktifkan di Apps Script)
+  $("#crNote").textContent = cr ? (cr.error ? ` · Classroom: ${cr.error}` : ` · Classroom: ${cr.n} tugasan`) : "";
   $("#alert").hidden = true;
   const firstLoad = seenMsg.size === 0;
   const key = m => m.id || (String(m.raw ?? m.masa) + "|" + (m.teks || m.mesej));
@@ -1436,12 +1442,12 @@ function renderTasks(){
   $("#tcount").textContent = `${list.length} dipaparkan`;
   $("#tbody").innerHTML = list.length ? list.map(({t,s}) => `
     <tr class="row st-${s}">
-      <td class="c-title"><div class="tt">${esc(t.tajuk)}${isPending(t) ? '<span class="pend" title="Belum disimpan ke Google Sheet; akan dicuba semula">BELUM SYNC</span>' : ""}</div><div class="tu">${esc(t.unit)}</div></td>
+      <td class="c-title"><div class="tt">${esc(t.tajuk)}${isPending(t) ? '<span class="pend" title="Belum disimpan ke Google Sheet; akan dicuba semula">BELUM SYNC</span>' : ""}${t.sumber ? `<span class="src" title="Tugasan daripada ${esc(t.sumber)} (baca sahaja)">${esc(t.sumber)}</span>` : ""}</div><div class="tu">${esc(t.unit)}</div></td>
       <td class="c-pic pic">${esc(t.pic)}</td>
       <td class="c-due due">${t.tarikh ? fmtDate(t.tarikh) : "—"}<small>${dueText(t)}</small></td>
       <td class="c-prog"><div class="prog"><div class="bar"><i style="width:${t.kemajuan}%"></i></div><span>${t.kemajuan}%</span></div></td>
       <td class="c-pill"><span class="pill">${ST[s].label}</span></td>
-      <td class="c-ops task-ops"><button type="button" data-act="edit" data-k="${taskKey(t)}">Edit</button><button type="button" class="del" data-act="del" data-k="${taskKey(t)}" aria-label="Padam tugasan">Padam</button></td>
+      <td class="c-ops task-ops">${t.sumber ? (t.pautan ? `<a href="${esc(t.pautan)}" target="_blank" rel="noopener" aria-label="Buka tugasan dalam ${esc(t.sumber)}">Buka &#8599;</a>` : "") : `<button type="button" data-act="edit" data-k="${taskKey(t)}">Edit</button><button type="button" class="del" data-act="del" data-k="${taskKey(t)}" aria-label="Padam tugasan">Padam</button>`}</td>
     </tr>`).join("") : `<tr><td colspan="6" class="empty">${(q || unitSel) ? "Tiada tugasan sepadan dengan carian." : "Tiada tugasan dalam kategori ini."}</td></tr>`;
 }
 $("#taskSearch").addEventListener("input", e => { taskQuery = e.target.value; renderTasks(); });

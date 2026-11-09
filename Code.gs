@@ -15,6 +15,7 @@
  *     CC_KEY    = kunci akses rahsia (PILIHAN; jika kosong/tiada, dashboard terbuka tanpa kunci)
  *     SEKOLAH   = SMK Taman Medan        (pilihan)
  *     REFRESH   = 30                      (pilihan, saat)
+ *     CLASSROOM_KELAS = 838802788260      (pilihan; ID/pautan kelas Classroom yang dipaparkan, koma untuk lebih satu)
  *
  * DEPLOY: Deploy > Manage deployments > Edit > Version: New version > Deploy
  *   Execute as: Me   |   Who has access: Anyone
@@ -71,6 +72,7 @@ function doPost(e) {
 /* ---------------- Dipanggil juga melalui google.script.run ---------------- */
 function dataDashboard(key) {
   checkKey_(key);
+  var cr = classroomTasks_();
   var props = PropertiesService.getScriptProperties();
   var tg = readSheet_('Telegram').filter(function (m) {
     var s = String(m.papar === undefined ? 'ya' : m.papar).toLowerCase();
@@ -84,7 +86,7 @@ function dataDashboard(key) {
     tugasan: readSheet_('Tugasan').filter(function (t) { return t.tajuk; }).map(function (t) {
       t.kemajuan = Number(t.kemajuan) || 0;
       return t;
-    }),
+    }).concat(cr.items),
     relief: readSheet_('Relief').filter(function (r) { return r.kelas; })
       .sort(function (a, b) { return String(b.tarikh + b.masa).localeCompare(String(a.tarikh + a.masa)); }),
     pwa: withIcons_(readSheet_('PWA')
@@ -102,7 +104,8 @@ function dataDashboard(key) {
         return (x.teks || x.pengumuman) && isAktif_(x.aktif) && !(tamat && String(tamat) < Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'));
       })
       .map(function (x) { return String(x.teks || x.pengumuman); }),
-    telegram: tg.slice(0, 50)
+    telegram: tg.slice(0, 50),
+    classroom: cr.off ? undefined : { n: cr.items.length, error: cr.error || '' }
   };
 }
 
@@ -307,6 +310,97 @@ function withIcons_(list) {
 function izinkanIkon() {
   UrlFetchApp.fetch('https://www.google.com/', { muteHttpExceptions: true });
   CacheService.getScriptCache().put('izin', '1', 60);
+}
+
+/* ---------------- Tugasan Google Classroom ----------------
+ * Membaca tugasan yang DIBERI KEPADA akaun pemilik skrip (sebagai ahli/"murid" kelas Classroom),
+ * lalu memaparkannya dalam Papan Tugasan (baca sahaja). Hasil disimpan dalam cache 10 minit.
+ * AKTIFKAN SEKALI: Apps Script > Services (+) > "Google Classroom API" > Add, kemudian Run izinkanClassroom().
+ * Jika perkhidmatan belum diaktifkan, bahagian ini dilangkau (tiada ralat). */
+function crParams_(base, tok) {
+  if (tok) base.pageToken = tok;
+  return base;
+}
+
+/* Script property CLASSROOM_KELAS (pilihan): senarai kelas yang dipaparkan, dipisah koma.
+ * Boleh ditampal sebagai ID (838802788260), token dalam pautan (ODM4ODAyNzg4MjYw), atau pautan penuh kelas.
+ * Jika kosong, semua kelas aktif yang anda sertai dipaparkan. */
+function kelasTapis_() {
+  var raw = String(PropertiesService.getScriptProperties().getProperty('CLASSROOM_KELAS') || '');
+  return raw.split(',').map(function (x) {
+    x = x.trim();
+    var m = /\/c\/([A-Za-z0-9_-]+)/.exec(x);
+    if (m) x = m[1];
+    if (x && !/^\d+$/.test(x)) {
+      try { var d = Utilities.newBlob(Utilities.base64Decode(x.replace(/-/g, '+').replace(/_/g, '/'))).getDataAsString(); if (/^\d+$/.test(d)) x = d; } catch (e) {}
+    }
+    return x;
+  }).filter(String);
+}
+
+function classroomTasks_() {
+  if (typeof Classroom === 'undefined') return { items: [], off: true };
+  var cache = CacheService.getScriptCache();
+  var only = kelasTapis_();
+  var ckey = 'cr:v2:' + md5_(only.join(','));
+  try {
+    var hit = cache.get(ckey);
+    if (hit) return JSON.parse(hit);
+
+    var courses = [], tok = '', r;
+    do {
+      r = Classroom.Courses.list(crParams_({ studentId: 'me', courseStates: ['ACTIVE'], pageSize: 50 }, tok));
+      courses = courses.concat(r.courses || []);
+      tok = r.nextPageToken || '';
+    } while (tok);
+
+    if (only.length) courses = courses.filter(function (c) { return only.indexOf(String(c.id)) >= 0; });
+    var cutoff = Utilities.formatDate(new Date(Date.now() - 14 * 86400000), TZ, 'yyyy-MM-dd');
+    var items = [];
+    courses.forEach(function (c) {
+      var subs = {}, t2 = '', sr, t3 = '', wr;
+      do {
+        sr = Classroom.Courses.CourseWork.StudentSubmissions.list(c.id, '-', crParams_({ userId: 'me', pageSize: 100 }, t2));
+        (sr.studentSubmissions || []).forEach(function (s) { subs[s.courseWorkId] = s; });
+        t2 = sr.nextPageToken || '';
+      } while (t2);
+      do {
+        wr = Classroom.Courses.CourseWork.list(c.id, crParams_({ courseWorkStates: ['PUBLISHED'], pageSize: 100 }, t3));
+        (wr.courseWork || []).forEach(function (w) {
+          var d = w.dueDate;
+          var akhir = d ? d.year + '-' + ('0' + d.month).slice(-2) + '-' + ('0' + d.day).slice(-2) : '';
+          var st = subs[w.id] ? subs[w.id].state : 'NEW';
+          var done = st === 'TURNED_IN' || st === 'RETURNED';
+          if (done && (!akhir || akhir < cutoff)) return;      // sudah lama selesai: tidak dipaparkan
+          items.push({
+            _k: 'cr-' + w.id,
+            tajuk: w.title || '(Tanpa tajuk)',
+            unit: c.name || 'Classroom',
+            pic: c.section || '',
+            akhir: akhir,
+            status: done ? 'Selesai' : 'Dalam Proses',
+            kemajuan: done ? 100 : 0,
+            sumber: 'Classroom',
+            pautan: w.alternateLink || ''
+          });
+        });
+        t3 = wr.nextPageToken || '';
+      } while (t3);
+    });
+    items = items.slice(0, 150);
+    var out = { items: items };
+    try { cache.put(ckey, JSON.stringify(out), 600); } catch (e) {}
+    return out;
+  } catch (e) {
+    return { items: [], error: String((e && e.message) || e) };
+  }
+}
+
+/* Jalankan SEKALI dari editor untuk memberi kebenaran Classroom (selepas menambah perkhidmatan). */
+function izinkanClassroom() {
+  var r = Classroom.Courses.list({ studentId: 'me', courseStates: ['ACTIVE'], pageSize: 5 });
+  (r.courses || []).forEach(function (c) { Logger.log('Kelas: ' + c.name + '  | ID: ' + c.id); });
+  Logger.log('Jumlah kelas (maks. 5 ditunjuk): ' + (r.courses || []).length);
 }
 
 /* ---------------- Semakan status PWA (pilihan) ----------------
