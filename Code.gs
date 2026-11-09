@@ -32,7 +32,7 @@
  *   ?api=save&action=append|update|delete&sheet=Tugasan|Relief|Telegram|PWA&type=...&key=KUNCI&data={JSON}
  */
 
-var CC_VERSI = '2026-11-09d classroom-pintasan';   // tukar setiap kali kod dikemas kini; semak melalui ?api=debug
+var CC_VERSI = '2026-11-09e classroom-semua-kelas';   // tukar setiap kali kod dikemas kini; semak melalui ?api=debug
 var SHEETS_SAVE =['Tugasan', 'Relief', 'Telegram', 'PWA'];   // tab yang boleh ditulis dari dashboard
 var TZ = Session.getScriptTimeZone() || 'Asia/Kuala_Lumpur';
 
@@ -112,7 +112,8 @@ function dataDashboard(key) {
       })
       .map(function (x) { return String(x.teks || x.pengumuman); }),
     telegram: tg.slice(0, 50),
-    classroom: cr.off ? undefined : { n: cr.items.length, error: cr.error || '' }
+    classroom: cr.off ? undefined : { n: cr.items.length, error: cr.error || '' },
+    kelasClassroom: kelasClassroom_()
   };
 }
 
@@ -317,6 +318,38 @@ function withIcons_(list) {
 function izinkanIkon() {
   UrlFetchApp.fetch('https://www.google.com/', { muteHttpExceptions: true });
   CacheService.getScriptCache().put('izin', '1', 60);
+}
+
+/* ---------------- Senarai kelas Classroom (untuk panel pintasan) ----------------
+ * Membaca SEMUA kelas aktif akaun pemilik skrip: kelas yang disertai (ahli) dan kelas yang diajar (guru).
+ * Hanya memerlukan kebenaran senarai kelas (Courses.list), bukan data tugasan. Cache 30 minit. */
+function kelasClassroom_() {
+  if (typeof Classroom === 'undefined') return [];
+  var cache = CacheService.getScriptCache();
+  try {
+    var hit = cache.get('crk:v1');
+    if (hit) return JSON.parse(hit);
+  } catch (e0) {}
+  var seen = {}, out = [];
+  [['studentId', 'Ahli'], ['teacherId', 'Guru']].forEach(function (q) {
+    try {
+      var tok = '', r, p;
+      do {
+        p = { courseStates: ['ACTIVE'], pageSize: 100 };
+        p[q[0]] = 'me';
+        if (tok) p.pageToken = tok;
+        r = Classroom.Courses.list(p);
+        (r.courses || []).forEach(function (c) {
+          if (seen[c.id]) return;
+          seen[c.id] = 1;
+          out.push({ id: String(c.id), nama: c.name || '', bahagian: c.section || '', pautan: c.alternateLink || '', peranan: q[1] });
+        });
+        tok = r.nextPageToken || '';
+      } while (tok);
+    } catch (e) { /* peranan ini tidak dapat dibaca: teruskan dengan yang lain */ }
+  });
+  if (out.length) { try { cache.put('crk:v1', JSON.stringify(out), 1800); } catch (e2) {} }
+  return out;
 }
 
 /* ---------------- Tugasan Google Classroom ----------------
@@ -617,6 +650,7 @@ function debugInfo_(key) {
     versi: CC_VERSI,                                       // untuk mengesahkan versi deployment yang aktif
     classroomPerkhidmatan: typeof Classroom !== 'undefined',
     classroomKelasDitapis: kelasTapis_(),
+    classroomSemuaKelas: kelasClassroom_().length,
     classroomTugasan: cr.items.length,
     classroomRalat: cr.error || '',
     tab: SpreadsheetApp.getActive().getSheets().map(function (sh) {

@@ -885,7 +885,7 @@ function applyData(d, live){
   const fresh = new Set(d.telegram.filter(m => !firstLoad && !seenMsg.has(key(m))).map(key));
   d.telegram.forEach(m => seenMsg.add(key(m)));
   setFeed(d.telegram);
-  renderAll(); renderFeed(fresh, key); renderPwa(); renderTicker();
+  renderAll(); renderFeed(fresh, key); renderPwa(); renderTicker(); renderClassroom();
 }
 function loadData(){
   if (!LIVE) return;
@@ -1800,14 +1800,31 @@ function renderAll(){ renderKpis(); renderFocus(); renderTasks(); renderTimeline
 
 /* ---------- Pintasan Google Classroom (pautan dalam config.js) ---------- */
 function renderClassroom(){
-  const list = ((window.CC_CONFIG && window.CC_CONFIG.CLASSROOM) || []).filter(c => c && /^https?:\/\//i.test(c.pautan || ""));
+  const ok = c => c && /^https?:\/\//i.test(c.pautan || "");
+  const cfg = ((window.CC_CONFIG && window.CC_CONFIG.CLASSROOM) || []).filter(ok);
+  const api = (DATA && DATA.kelasClassroom) || [];           // semua kelas aktif, dibaca oleh Apps Script
+  const tokOf = u => ((/\/c\/([A-Za-z0-9_-]+)/.exec(u || "")) || [])[1] || "";
+  const tokId = id => btoa(String(id)).replace(/=+$/, "");   // ID kelas -> token dalam pautan Classroom
+  const cfgBy = new Map(cfg.map(c => [tokOf(c.pautan), c]));
+  const used = new Set();
+  const list = api.map(c => {
+    const t = tokId(c.id), cf = cfgBy.get(t);
+    used.add(t);
+    return {
+      nama: (cf && cf.nama) || c.nama || "Kelas",
+      pautan: c.pautan || ("https://classroom.google.com/c/" + t),
+      utama: !!(cf && cf.utama),
+      nota: (cf && cf.nota) || [c.bahagian, c.peranan].filter(Boolean).join(" · ")
+    };
+  });
+  cfg.forEach(c => { if (!used.has(tokOf(c.pautan))) list.push(c); });   // pautan manual yang tiada dalam senarai API
   $("#clsCount").textContent = list.length ? `${list.length} kelas` : "";
   if (!list.length) {
     $("#clsList").innerHTML = `<div class="relief-empty">Tiada kelas. Tambah senarai kelas dalam <b>config.js</b> (CLASSROOM).</div>`;
     return;
   }
-  const sorted = [...list].sort((a, b) => !!b.utama - !!a.utama);   // kelas utama dahulu
-  $("#clsList").innerHTML = sorted.map(c => `
+  list.sort((a, b) => (!!b.utama - !!a.utama) || String(a.nama).localeCompare(String(b.nama)));   // kelas utama dahulu
+  $("#clsList").innerHTML = list.map(c => `
     <a class="cls ${c.utama ? "main" : ""}" href="${esc(c.pautan)}" target="_blank" rel="noopener">
       <span class="cls-n">${esc(c.nama || "Kelas")}</span>
       <span class="cls-s">${esc(c.nota || (c.utama ? "Kelas utama" : "Buka kelas"))} &#8599;</span>
