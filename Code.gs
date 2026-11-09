@@ -15,18 +15,24 @@
  *     CC_KEY    = kunci akses rahsia (PILIHAN; jika kosong/tiada, dashboard terbuka tanpa kunci)
  *     SEKOLAH   = SMK Taman Medan        (pilihan)
  *     REFRESH   = 30                      (pilihan, saat)
- *     CLASSROOM_KELAS = 838802788260      (pilihan; ID/pautan kelas Classroom yang dipaparkan, koma untuk lebih satu)
+ *     CLASSROOM_API   = on                (pilihan; hidupkan bacaan tugasan Classroom melalui API. MATI secara lalai; perlu kebenaran pentadbir)
+ *     CLASSROOM_KELAS = 838802788260      (pilihan, hanya jika CLASSROOM_API=on; ID/pautan kelas Classroom yang dipaparkan, koma untuk lebih satu)
  *
  * DEPLOY: Deploy > Manage deployments > Edit > Version: New version > Deploy
  *   Execute as: Me   |   Who has access: Anyone
  *   (URL /exec kekal sama; tampal dalam config.js)
+ *
+ * CLASSROOM (jika "Google Classroom API" tiada dalam senarai Services):
+ *   Project Settings > tandakan "Show appsscript.json manifest file in editor" > buka appsscript.json > tambah dalam kurungan {} utama:
+ *     "dependencies": { "enabledAdvancedServices": [ { "userSymbol": "Classroom", "serviceId": "classroom", "version": "v1" } ] }
+ *   (pisahkan dengan koma daripada baris sebelumnya), Save, kemudian Run izinkanClassroom.
  *
  * API (GET, JSON, CORS dibenarkan oleh Apps Script):
  *   ?api=data&key=KUNCI
  *   ?api=save&action=append|update|delete&sheet=Tugasan|Relief|Telegram|PWA&type=...&key=KUNCI&data={JSON}
  */
 
-var CC_VERSI = '2026-11-09 classroom+pwa+ikon';   // tukar setiap kali kod dikemas kini; semak melalui ?api=debug
+var CC_VERSI = '2026-11-09d classroom-pintasan';   // tukar setiap kali kod dikemas kini; semak melalui ?api=debug
 var SHEETS_SAVE =['Tugasan', 'Relief', 'Telegram', 'PWA'];   // tab yang boleh ditulis dari dashboard
 var TZ = Session.getScriptTimeZone() || 'Asia/Kuala_Lumpur';
 
@@ -339,7 +345,25 @@ function kelasTapis_() {
   }).filter(String);
 }
 
+/* Tulis senarai tugasan Classroom ke tab "Classroom" dalam Sheet (dicipta jika belum ada; ditulis semula setiap kali data segar dibaca). */
+function tulisTabClassroom_(items) {
+  try {
+    var ss = SpreadsheetApp.getActive();
+    var sh = ss.getSheetByName('Classroom') || ss.insertSheet('Classroom');
+    var head = ['Kelas', 'Tajuk Tugasan', 'Tarikh Akhir', 'Status', 'Pautan', 'ID Tugasan', 'Dikemas Kini'];
+    var stamp = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
+    var rows = items.map(function (t) { return [t.unit, t.tajuk, t.akhir, t.status, t.pautan, t._k, stamp]; });
+    sh.clearContents();
+    sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold');
+    if (rows.length) sh.getRange(2, 1, rows.length, head.length).setValues(rows);
+    sh.setFrozenRows(1);
+  } catch (e) { /* tab gagal ditulis: tidak menjejaskan dashboard */ }
+}
+
 function classroomTasks_() {
+  // Bacaan API Classroom adalah PILIHAN dan MATI secara lalai (ramai pentadbir sekolah menyekatnya).
+  // Hidupkan dengan Script property CLASSROOM_API = on. Pintasan kelas pada dashboard tidak memerlukannya.
+  if (String(PropertiesService.getScriptProperties().getProperty('CLASSROOM_API') || '').toLowerCase() !== 'on') return { items: [], off: true };
   if (typeof Classroom === 'undefined') {
     // Jika pengguna sudah menetapkan CLASSROOM_KELAS tetapi perkhidmatan belum ditambah, beritahu di dashboard
     return kelasTapis_().length
@@ -362,17 +386,36 @@ function classroomTasks_() {
 
     if (only.length) courses = courses.filter(function (c) { return only.indexOf(String(c.id)) >= 0; });
     var cutoff = Utilities.formatDate(new Date(Date.now() - 14 * 86400000), TZ, 'yyyy-MM-dd');
-    var items = [];
+    var items = [], errs = [];
     courses.forEach(function (c) {
-      var subs = {}, t2 = '', sr, t3 = '', wr;
-      do {
-        sr = Classroom.Courses.CourseWork.StudentSubmissions.list(c.id, '-', crParams_({ userId: 'me', pageSize: 100 }, t2));
-        (sr.studentSubmissions || []).forEach(function (s) { subs[s.courseWorkId] = s; });
-        t2 = sr.nextPageToken || '';
-      } while (t2);
-      do {
-        wr = Classroom.Courses.CourseWork.list(c.id, crParams_({ courseWorkStates: ['PUBLISHED'], pageSize: 100 }, t3));
-        (wr.courseWork || []).forEach(function (w) {
+      try {
+        // 1) senarai tugasan yang diterbitkan
+        var works = [], t3 = '', wr;
+        do {
+          wr = Classroom.Courses.CourseWork.list(c.id, crParams_({ courseWorkStates: ['PUBLISHED'], pageSize: 100 }, t3));
+          works = works.concat(wr.courseWork || []);
+          t3 = wr.nextPageToken || '';
+        } while (t3);
+
+        // 2) keadaan serahan saya: cara pantas (semua tugasan sekali gus), jika ditolak cuba satu demi satu
+        var subs = {};
+        try {
+          var t2 = '', sr;
+          do {
+            sr = Classroom.Courses.CourseWork.StudentSubmissions.list(c.id, '-', crParams_({ userId: 'me', pageSize: 100 }, t2));
+            (sr.studentSubmissions || []).forEach(function (s) { subs[s.courseWorkId] = s; });
+            t2 = sr.nextPageToken || '';
+          } while (t2);
+        } catch (e1) {
+          works.forEach(function (w) {
+            try {
+              var r1 = Classroom.Courses.CourseWork.StudentSubmissions.list(c.id, w.id, { userId: 'me' });
+              if ((r1.studentSubmissions || [])[0]) subs[w.id] = r1.studentSubmissions[0];
+            } catch (e2) { /* keadaan serahan tidak dapat dibaca untuk tugasan ini */ }
+          });
+        }
+
+        works.forEach(function (w) {
           var d = w.dueDate;
           var akhir = d ? d.year + '-' + ('0' + d.month).slice(-2) + '-' + ('0' + d.day).slice(-2) : '';
           var st = subs[w.id] ? subs[w.id].state : 'NEW';
@@ -390,12 +433,14 @@ function classroomTasks_() {
             pautan: w.alternateLink || ''
           });
         });
-        t3 = wr.nextPageToken || '';
-      } while (t3);
+      } catch (ec) {
+        errs.push((c.name || c.id) + ': ' + String((ec && ec.message) || ec));   // kelas ini dilangkau; kelas lain diteruskan
+      }
     });
     items = items.slice(0, 150);
-    var out = { items: items };
-    try { cache.put(ckey, JSON.stringify(out), 600); } catch (e) {}
+    var out = { items: items, error: errs.join(' | ') };
+    tulisTabClassroom_(items);
+    if (!errs.length) { try { cache.put(ckey, JSON.stringify(out), 600); } catch (e) {} }
     return out;
   } catch (e) {
     return { items: [], error: String((e && e.message) || e) };
@@ -407,6 +452,9 @@ function izinkanClassroom() {
   var r = Classroom.Courses.list({ studentId: 'me', courseStates: ['ACTIVE'], pageSize: 5 });
   (r.courses || []).forEach(function (c) { Logger.log('Kelas: ' + c.name + '  | ID: ' + c.id); });
   Logger.log('Jumlah kelas (maks. 5 ditunjuk): ' + (r.courses || []).length);
+  CacheService.getScriptCache().remove('cr:v2:' + md5_(kelasTapis_().join(',')));
+  var t = classroomTasks_();   // juga mencipta/mengisi tab "Classroom" dalam Sheet
+  Logger.log('Tugasan dijumpai: ' + t.items.length + (t.error ? '  | RALAT: ' + t.error : ''));
 }
 
 /* ---------------- Semakan status PWA (pilihan) ----------------

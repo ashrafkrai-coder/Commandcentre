@@ -372,6 +372,16 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
 .rbtn.ok:hover{border-color:var(--ok); color:var(--ok)}
 .rbtn.del:hover{border-color:var(--crit); color:var(--crit)}
 .rbtn:disabled{opacity:.5; cursor:wait}
+.cls-top{display:flex; flex-wrap:wrap; gap:8px}
+.cls-top .btn{text-decoration:none; display:inline-block}
+.cls-list{display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:10px; padding:12px 14px}
+.cls{display:flex; flex-direction:column; gap:4px; padding:12px; background:var(--panel2); border:1px solid var(--line); border-left:3px solid var(--info); color:var(--fg); text-decoration:none; min-height:64px; min-width:0}
+.cls:hover{border-color:var(--ice); transform:translateY(-1px)}
+.cls-n{font-weight:600; font-size:14px; line-height:1.25; overflow-wrap:anywhere}
+.cls-s{font:500 11px/1.3 var(--f-mono); color:var(--dim)}
+.cls.main{grid-column:1/-1; border-left-color:var(--warn); background:var(--warn-soft); min-height:72px}
+.cls.main .cls-n{font-size:16px; font-family:var(--f-display); letter-spacing:.04em}
+.cls.main .cls-s{color:var(--warn); font-weight:700}
 .rbtn-danger{margin-right:auto; color:var(--crit); border-color:var(--crit)}
 .tw .edit{position:absolute; right:34px; bottom:4px; background:transparent; border:0; color:var(--faint); font-size:15px; line-height:1; width:32px; height:36px; cursor:pointer}
 .tw .edit:hover{color:var(--ice)}
@@ -396,8 +406,8 @@ button.tile{font:inherit; text-align:center}
   td.empty{display:block; border:0}
 }
 @media (max-width:900px){
-  .grid .panel[data-p="tugas"]{order:1} .grid .panel[data-p="relief"]{order:2} .grid .panel[data-p="jadual"]{order:3}
-  .grid .panel[data-p="tg"]{order:4} .grid .panel[data-p="pwa"]{order:5}
+  .grid .panel[data-p="tugas"]{order:1} .grid .panel[data-p="classroom"]{order:2} .grid .panel[data-p="relief"]{order:3} .grid .panel[data-p="jadual"]{order:4}
+  .grid .panel[data-p="tg"]{order:5} .grid .panel[data-p="pwa"]{order:6}
 }
 @media (max-width:520px){
   .eyebrow,.kpi .lbl,.entry-field label{font-size:11.5px}
@@ -483,6 +493,18 @@ button.tile{font:inherit; text-align:center}
     <div class="ph"><h2 id="h-pwa">Pelancar Aplikasi PWA <small id="pcount"></small></h2><button class="btn btn-primary" id="addPwaBtn" type="button">+ Aplikasi</button></div>
     <div class="tiles" id="tiles"></div>
     <div class="pf">Sumber: <b>Tab "PWA"</b> · tambah &amp; edit terus di sini, atau terus dalam Sheet</div>
+  </section>
+
+  <section class="panel" data-p="classroom" aria-labelledby="h-cls">
+    <div class="ph">
+      <h2 id="h-cls">Google Classroom <small id="clsCount"></small></h2>
+      <span class="cls-top">
+        <a class="btn btn-primary" href="https://classroom.google.com/" target="_blank" rel="noopener">Buka Classroom &#8599;</a>
+        <a class="btn" href="https://classroom.google.com/a/not-turned-in/all" target="_blank" rel="noopener" title="Senarai tugasan belum diserahkan">To-do &#8599;</a>
+      </span>
+    </div>
+    <div class="cls-list" id="clsList"></div>
+    <div class="pf">Pautan terus ke kelas · senarai kelas diubah dalam <b>config.js</b> · tugasan dilihat &amp; dihantar dalam Classroom</div>
   </section>
 
   <section class="panel" data-p="relief" aria-labelledby="h-relief">
@@ -856,7 +878,7 @@ function applyData(d, live){
   $("#tgsrc").textContent = live ? "dari tab Telegram" : "demo";
   $("#upd").textContent = live ? `dikemas kini ${hhmm(new Date())}` : "data contoh";
   const cr = d.classroom;   // tugasan Google Classroom (jika diaktifkan di Apps Script)
-  $("#crNote").textContent = cr ? (cr.error ? ` · Classroom: ${cr.error}` : ` · Classroom: ${cr.n} tugasan`) : "";
+  $("#crNote").textContent = cr ? ` · Classroom: ${cr.n} tugasan` + (cr.error ? ` (ralat: ${cr.error})` : "") : "";
   $("#alert").hidden = true;
   const firstLoad = seenMsg.size === 0;
   const key = m => m.id || (String(m.raw ?? m.masa) + "|" + (m.teks || m.mesej));
@@ -1775,6 +1797,23 @@ function renderAll(){ renderKpis(); renderFocus(); renderTasks(); renderTimeline
   mq.addEventListener("change", () => { st = load(); setOpen(!!st.open); });   // beralih antara HP dan komputer
   setOpen(!!st.open);
 })();
+
+/* ---------- Pintasan Google Classroom (pautan dalam config.js) ---------- */
+function renderClassroom(){
+  const list = ((window.CC_CONFIG && window.CC_CONFIG.CLASSROOM) || []).filter(c => c && /^https?:\/\//i.test(c.pautan || ""));
+  $("#clsCount").textContent = list.length ? `${list.length} kelas` : "";
+  if (!list.length) {
+    $("#clsList").innerHTML = `<div class="relief-empty">Tiada kelas. Tambah senarai kelas dalam <b>config.js</b> (CLASSROOM).</div>`;
+    return;
+  }
+  const sorted = [...list].sort((a, b) => !!b.utama - !!a.utama);   // kelas utama dahulu
+  $("#clsList").innerHTML = sorted.map(c => `
+    <a class="cls ${c.utama ? "main" : ""}" href="${esc(c.pautan)}" target="_blank" rel="noopener">
+      <span class="cls-n">${esc(c.nama || "Kelas")}</span>
+      <span class="cls-s">${esc(c.nota || (c.utama ? "Kelas utama" : "Buka kelas"))} &#8599;</span>
+    </a>`).join("");
+}
+renderClassroom();
 
 /* ---------- Panel boleh dilipat (disimpan pada peranti) ---------- */
 (function(){
