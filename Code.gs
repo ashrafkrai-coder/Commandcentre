@@ -26,7 +26,8 @@
  *   ?api=save&action=append|update|delete&sheet=Tugasan|Relief|Telegram|PWA&type=...&key=KUNCI&data={JSON}
  */
 
-var SHEETS_SAVE = ['Tugasan', 'Relief', 'Telegram', 'PWA'];   // tab yang boleh ditulis dari dashboard
+var CC_VERSI = '2026-11-09 classroom+pwa+ikon';   // tukar setiap kali kod dikemas kini; semak melalui ?api=debug
+var SHEETS_SAVE =['Tugasan', 'Relief', 'Telegram', 'PWA'];   // tab yang boleh ditulis dari dashboard
 var TZ = Session.getScriptTimeZone() || 'Asia/Kuala_Lumpur';
 
 /* ---------------- Titik masuk ---------------- */
@@ -339,7 +340,12 @@ function kelasTapis_() {
 }
 
 function classroomTasks_() {
-  if (typeof Classroom === 'undefined') return { items: [], off: true };
+  if (typeof Classroom === 'undefined') {
+    // Jika pengguna sudah menetapkan CLASSROOM_KELAS tetapi perkhidmatan belum ditambah, beritahu di dashboard
+    return kelasTapis_().length
+      ? { items: [], error: 'perkhidmatan Classroom belum diaktifkan (Apps Script > Services > Google Classroom API)' }
+      : { items: [], off: true };
+  }
   var cache = CacheService.getScriptCache();
   var only = kelasTapis_();
   var ckey = 'cr:v2:' + md5_(only.join(','));
@@ -558,7 +564,15 @@ function readSheet_(name) {
 /* Semak tab & pengepala yang dilihat oleh skrip: ?api=debug&key=... */
 function debugInfo_(key) {
   checkKey_(key);
-  return SpreadsheetApp.getActive().getSheets().map(function (sh) {
-    return { tab: sh.getName(), baris: sh.getLastRow(), pengepala: sh.getLastColumn() ? sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0] : [] };
-  });
+  var cr = classroomTasks_();
+  return {
+    versi: CC_VERSI,                                       // untuk mengesahkan versi deployment yang aktif
+    classroomPerkhidmatan: typeof Classroom !== 'undefined',
+    classroomKelasDitapis: kelasTapis_(),
+    classroomTugasan: cr.items.length,
+    classroomRalat: cr.error || '',
+    tab: SpreadsheetApp.getActive().getSheets().map(function (sh) {
+      return { tab: sh.getName(), baris: sh.getLastRow(), pengepala: sh.getLastColumn() ? sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0] : [] };
+    })
+  };
 }
