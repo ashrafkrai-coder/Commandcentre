@@ -374,7 +374,12 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
 .rbtn:disabled{opacity:.5; cursor:wait}
 .cls-top{display:flex; flex-wrap:wrap; gap:8px}
 .cls-top .btn{text-decoration:none; display:inline-block}
-.cls-list{display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:10px; padding:12px 14px}
+.cls-tabs{padding:10px 14px 0}
+.cls-tabs:empty{display:none}
+.cls-list{padding:12px 14px}
+.cls-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:10px}
+.cls-grp{margin:0 0 8px; font:600 11px/1 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--dim)}
+.cls-grp:not(:first-child){margin-top:16px}
 .cls{display:flex; flex-direction:column; gap:4px; padding:12px; background:var(--panel2); border:1px solid var(--line); border-left:3px solid var(--info); color:var(--fg); text-decoration:none; min-height:64px; min-width:0}
 .cls:hover{border-color:var(--ice); transform:translateY(-1px)}
 .cls-n{font-weight:600; font-size:14px; line-height:1.25; overflow-wrap:anywhere}
@@ -503,6 +508,7 @@ button.tile{font:inherit; text-align:center}
         <a class="btn" href="https://classroom.google.com/a/not-turned-in/all" target="_blank" rel="noopener" title="Senarai tugasan belum diserahkan">To-do &#8599;</a>
       </span>
     </div>
+    <div class="chips cls-tabs" id="clsTabs"></div>
     <div class="cls-list" id="clsList"></div>
     <div class="pf">Pautan terus ke kelas · senarai kelas diubah dalam <b>config.js</b> · tugasan dilihat &amp; dihantar dalam Classroom</div>
   </section>
@@ -1799,6 +1805,11 @@ function renderAll(){ renderKpis(); renderFocus(); renderTasks(); renderTimeline
 })();
 
 /* ---------- Pintasan Google Classroom (pautan dalam config.js) ---------- */
+let clsView = store.get("cc-cls-view", "semua");   // semua | teaching | enrolled
+const CLS_GROUPS = [
+  { id: "teaching", lbl: "Mengajar (Teaching)" },
+  { id: "enrolled", lbl: "Disertai (Enrolled)" },
+];
 function renderClassroom(){
   const ok = c => c && /^https?:\/\//i.test(c.pautan || "");
   const cfg = ((window.CC_CONFIG && window.CC_CONFIG.CLASSROOM) || []).filter(ok);
@@ -1814,22 +1825,39 @@ function renderClassroom(){
       nama: (cf && cf.nama) || c.nama || "Kelas",
       pautan: c.pautan || ("https://classroom.google.com/c/" + t),
       utama: !!(cf && cf.utama),
-      nota: (cf && cf.nota) || [c.bahagian, c.peranan].filter(Boolean).join(" · ")
+      nota: (cf && cf.nota) || c.bahagian || "",
+      jenis: c.jenis || (c.peranan === "Guru" ? "teaching" : "enrolled"),
     };
   });
-  cfg.forEach(c => { if (!used.has(tokOf(c.pautan))) list.push(c); });   // pautan manual yang tiada dalam senarai API
+  cfg.forEach(c => {                                         // pautan manual yang tiada dalam senarai API
+    if (used.has(tokOf(c.pautan))) return;
+    list.push({ ...c, jenis: /guru|mengajar|teach/i.test(String(c.peranan || "")) ? "teaching" : "enrolled" });
+  });
   $("#clsCount").textContent = list.length ? `${list.length} kelas` : "";
   if (!list.length) {
+    $("#clsTabs").innerHTML = "";
     $("#clsList").innerHTML = `<div class="relief-empty">Tiada kelas. Tambah senarai kelas dalam <b>config.js</b> (CLASSROOM).</div>`;
     return;
   }
-  list.sort((a, b) => (!!b.utama - !!a.utama) || String(a.nama).localeCompare(String(b.nama)));   // kelas utama dahulu
-  $("#clsList").innerHTML = list.map(c => `
+  const by = id => list.filter(c => c.jenis === id).sort((a, b) => (!!b.utama - !!a.utama) || String(a.nama).localeCompare(String(b.nama)));
+  const groups = CLS_GROUPS.map(g => ({ ...g, items: by(g.id) })).filter(g => g.items.length);
+  if (groups.length < 2 || !groups.some(g => g.id === clsView)) clsView = "semua";   // satu kumpulan sahaja / pilihan tidak sah
+  $("#clsTabs").innerHTML = groups.length < 2 ? "" :
+    [{ id: "semua", lbl: "Semua", n: list.length }, ...groups.map(g => ({ id: g.id, lbl: g.lbl, n: g.items.length }))]
+      .map(t => `<button type="button" class="chip" data-v="${t.id}" aria-pressed="${t.id === clsView}">${esc(t.lbl)}<span class="n">${t.n}</span></button>`).join("");
+  const card = c => `
     <a class="cls ${c.utama ? "main" : ""}" href="${esc(c.pautan)}" target="_blank" rel="noopener">
       <span class="cls-n">${esc(c.nama || "Kelas")}</span>
       <span class="cls-s">${esc(c.nota || (c.utama ? "Kelas utama" : "Buka kelas"))} &#8599;</span>
-    </a>`).join("");
+    </a>`;
+  $("#clsList").innerHTML = groups.filter(g => clsView === "semua" || g.id === clsView).map(g => `
+    <div class="cls-grp">${esc(g.lbl)} · ${g.items.length}</div>
+    <div class="cls-grid">${g.items.map(card).join("")}</div>`).join("");
 }
+$("#clsTabs").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  clsView = b.dataset.v; store.set("cc-cls-view", clsView); renderClassroom();
+});
 renderClassroom();
 
 /* ---------- Panel boleh dilipat (disimpan pada peranti) ---------- */
