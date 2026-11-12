@@ -1,10 +1,12 @@
 // Service worker Command Centre
 // Tukar VERSI setiap kali fail PWA dikemas kini supaya peranti ambil versi baru.
-const VERSI = "cc-v29";
+const VERSI = "cc-v30";
 const FAIL = [
   "./",
   "index.html",
   "config.js",
+  "app-engine.js",
+  "master-index.json",
   "manifest.webmanifest",
   "icons/icon-192.png",
   "icons/icon-512.png",
@@ -39,7 +41,29 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  // Fail aplikasi: rangkaian dahulu, jatuh ke cache bila luar talian
+  // master-index.json: Stale-While-Revalidate (papar cache dahulu, kemas kini senyap di latar)
+  if (url.origin === self.location.origin && url.pathname.endsWith("/master-index.json")) {
+    e.respondWith(
+      caches.open(VERSI).then(c => c.match(req).then(hit => {
+        const baru = fetch(req).then(res => { if (res.ok) c.put(req, res.clone()); return res; }).catch(() => hit);
+        return hit || baru;
+      }))
+    );
+    return;
+  }
+
+  // Aset statik (ikon, imej, CSS, manifest): Cache-First
+  if (url.origin === self.location.origin && /\.(png|jpe?g|svg|webp|ico|css|woff2?|webmanifest)$/i.test(url.pathname)) {
+    e.respondWith(
+      caches.match(req).then(hit => hit || fetch(req).then(res => {
+        if (res.ok) { const copy = res.clone(); caches.open(VERSI).then(c => c.put(req, copy)); }
+        return res;
+      }))
+    );
+    return;
+  }
+
+  // Fail aplikasi (HTML/JS): rangkaian dahulu, jatuh ke cache bila luar talian
   if (url.origin === self.location.origin) {
     e.respondWith(
       fetch(req)

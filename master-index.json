@@ -1,0 +1,52 @@
+{
+  "school_info": {
+    "name": "SMK Taman Medan",
+    "short_name": "SMKTM",
+    "code": "BEA0000",
+    "district": "Petaling Perdana",
+    "state": "Selangor",
+    "engine_version": "2.0.0",
+    "schema_version": "1.0",
+    "timezone": "Asia/Kuala_Lumpur",
+    "last_updated": "2026-11-12T07:15:00+08:00",
+    "source": "mock"
+  },
+  "relief": [
+    { "id": "rl-001", "kelas": "5 Sains 1", "guru_absen": "Pn. Norhayati Ismail", "guru_ganti": "", "masa": "07:30", "status": "st-perlu" },
+    { "id": "rl-002", "kelas": "4 Bestari", "guru_absen": "En. Kamarul Zaman", "guru_ganti": "Cik Nurul Aini", "masa": "08:30", "status": "st-tugas" },
+    { "id": "rl-003", "kelas": "3 Dedikasi", "guru_absen": "Pn. Rosnah Abdullah", "guru_ganti": "En. Shahrul Nizam", "masa": "09:30", "status": "st-tugas" },
+    { "id": "rl-004", "kelas": "2 Cemerlang", "guru_absen": "Cik Farah Liyana", "guru_ganti": "Pn. Siti Mariam", "masa": "10:30", "status": "done" },
+    { "id": "rl-005", "kelas": "5 Sastera 2", "guru_absen": "En. Mohd Faizal", "guru_ganti": "", "masa": "11:30", "status": "st-perlu" }
+  ],
+  "tasks": [
+    { "id": "tk-001", "title": "Hantar RPT 2027 Panitia Bahasa Melayu", "pic": "Pn. Zainab Hashim", "due": "2026-11-09", "progress_percent": 60, "status": "st-lewat" },
+    { "id": "tk-002", "title": "Kemas kini data MURID di APDM", "pic": "En. Azlan Shah", "due": "2026-11-12", "progress_percent": 85, "status": "st-hari" },
+    { "id": "tk-003", "title": "Semakan skrip peperiksaan Tingkatan 4", "pic": "Pn. Rohani Yusof", "due": "2026-11-14", "progress_percent": 40, "status": "st-proses" },
+    { "id": "tk-004", "title": "Laporan PBD Semester 2", "pic": "En. Hafiz Rahman", "due": "2026-11-18", "progress_percent": 25, "status": "st-proses" },
+    { "id": "tk-005", "title": "Persediaan Hari Anugerah Cemerlang", "pic": "Pn. Latifah Omar", "due": "2026-11-21", "progress_percent": 55, "status": "st-proses" },
+    { "id": "tk-006", "title": "Inventori aset ICT makmal komputer", "pic": "En. Razali Ahmad", "due": "2026-11-05", "progress_percent": 100, "status": "st-selesai" },
+    { "id": "tk-007", "title": "Mesyuarat Jawatankuasa Disiplin Bil. 4/2026", "pic": "Cikgu Suriani Hamid", "due": "2026-11-10", "progress_percent": 30, "status": "st-lewat" }
+  ],
+  "pwa_tiles": [
+    { "id": "pw-001", "title": "SPLKPM", "category": "Pengurusan", "status": "d-online", "icon_path": "icons/icon-192.png", "url": "https://splkpm.moe.gov.my" },
+    { "id": "pw-002", "title": "APDM", "category": "Data Murid", "status": "d-online", "icon_path": "icons/icon-192.png", "url": "https://apdm.moe.gov.my" },
+    { "id": "pw-003", "title": "eOperasi", "category": "Pengurusan", "status": "d-online", "icon_path": "icons/icon-192.png", "url": "https://eoperasi.moe.gov.my" },
+    { "id": "pw-004", "title": "PBD Online", "category": "Akademik", "status": "d-semak", "icon_path": "icons/icon-192.png", "url": "https://sapsnkra.moe.gov.my" },
+    { "id": "pw-005", "title": "Google Classroom", "category": "Pembelajaran", "status": "d-online", "icon_path": "icons/icon-192.png", "url": "https://classroom.google.com" },
+    { "id": "pw-006", "title": "e-Kehadiran", "category": "Kehadiran", "status": "d-online", "icon_path": "icons/icon-192.png", "url": "https://example.edu.my/kehadiran" }
+  ],
+  "schedule": [
+    { "id": "sc-001", "time": "07:00-07:30", "event": "Perhimpunan Rasmi", "location": "Dataran Sekolah", "status": "past" },
+    { "id": "sc-002", "time": "08:00-09:00", "event": "Mesyuarat Panitia Sains", "location": "Bilik Mesyuarat", "status": "past" },
+    { "id": "sc-003", "time": "09:30-10:30", "event": "Taklimat Peperiksaan Akhir Tahun", "location": "Dewan Besar", "status": "now" },
+    { "id": "sc-004", "time": "11:00-12:00", "event": "Mesyuarat Kokurikulum", "location": "Bilik Gerakan", "status": "next" },
+    { "id": "sc-005", "time": "14:30-15:30", "event": "Latihan Pancaragam", "location": "Bilik Muzik", "status": "" },
+    { "id": "sc-006", "time": "16:00-17:00", "event": "Mesyuarat Pentadbiran", "location": "Bilik Pengetua", "status": "" }
+  ],
+  "telemetry": {
+    "critical": { "count": 2, "label": "Tugasan lewat" },
+    "warn": { "count": 1, "label": "Tugasan tamat hari ini" },
+    "ok": { "count": 1, "label": "Tugasan selesai" },
+    "info": { "count": 2, "label": "Relief belum ditugaskan" }
+  }
+}

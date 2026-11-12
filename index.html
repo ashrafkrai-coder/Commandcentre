@@ -169,6 +169,71 @@ h1 span{color:var(--ice)}
 .kpi.warn{--k:var(--warn)} .kpi.warn .val{color:var(--warn)}
 .kpi.ok{--k:var(--ok)} .kpi.info{--k:var(--info)}
 .kpi .bump{animation:bump .6s ease-out}
+/* ---- Visual HUD: gauge cincin, sparkline, imbasan ---- */
+.kpi .lbl{padding-right:50px}
+.kpi .ring{position:absolute; right:10px; top:10px; width:44px; height:44px; color:var(--k, var(--ice))}
+.kpi .ring svg{width:100%; height:100%; transform:rotate(-90deg); overflow:visible}
+.kpi .ring .trk{fill:none; stroke:var(--line); stroke-width:4}
+.kpi .ring .arc{fill:none; stroke:currentColor; stroke-width:4; stroke-linecap:butt; stroke-dasharray:var(--c) var(--c); stroke-dashoffset:var(--off); filter:drop-shadow(0 0 3px currentColor)}
+.kpi .ring.in .arc{animation:ringin 1.1s cubic-bezier(.2,.8,.2,1) both}
+.kpi .ring b{position:absolute; inset:0; display:grid; place-items:center; font:700 10px/1 var(--f-mono); color:var(--dim)}
+@keyframes ringin{from{stroke-dashoffset:var(--c)}}
+.kpi .spark{display:block; width:100%; height:22px; margin-top:7px; color:var(--k, var(--ice)); overflow:visible}
+.kpi .spark .ln{fill:none; stroke:currentColor; stroke-width:1.5; stroke-linejoin:round; stroke-linecap:round}
+.kpi .spark .ar{fill:currentColor; opacity:.12; stroke:none}
+.kpi .spark .dot{fill:currentColor}
+.kpi .spark .flat{stroke:var(--faint); stroke-width:1; stroke-dasharray:3 3; fill:none}
+.kpi::after{content:""; position:absolute; inset:0 auto 0 -40%; width:40%; background:linear-gradient(90deg, transparent, rgba(95,212,255,.07), transparent); transform:skewX(-18deg); animation:sweep 7s linear infinite; pointer-events:none}
+.kpi:nth-child(2)::after{animation-delay:1s} .kpi:nth-child(3)::after{animation-delay:2s} .kpi:nth-child(4)::after{animation-delay:3s} .kpi:nth-child(5)::after{animation-delay:4s} .kpi:nth-child(6)::after{animation-delay:5s}
+@keyframes sweep{0%{left:-40%} 35%,100%{left:140%}}
+.eyebrow.typing::after{content:"_"; margin-left:2px; color:var(--ice); animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+/* ---- Telemetri sistem ---- */
+.panel[data-p="sys"]{grid-column:1/-1}
+.sys-body{padding:14px; display:grid; gap:14px}
+.sys-meters{display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:12px}
+.mt{border:1px solid var(--line-soft); background:var(--panel2); padding:10px 12px; --k:var(--ok)}
+.mt .n{font:500 10.5px/1.2 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--dim)}
+.mt .v{font:700 24px/1.1 var(--f-display); margin-top:5px; color:var(--k); font-variant-numeric:tabular-nums}
+.mt .v small{font:400 11px/1 var(--f-mono); color:var(--dim); margin-left:4px}
+.mt .bar2{height:6px; background:var(--line); margin-top:8px; position:relative; overflow:hidden}
+.mt .bar2 i{position:absolute; inset:0 auto 0 0; background:var(--k); box-shadow:0 0 8px var(--k); transition:width .6s ease}
+.mt .s{font:400 11px/1.3 var(--f-mono); color:var(--dim); margin-top:6px}
+.mt.warn{--k:var(--warn)} .mt.crit{--k:var(--crit)} .mt.off{--k:var(--faint)}
+.sys-graphs{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px}
+.gr{margin:0; border:1px solid var(--line-soft); background:var(--panel2); padding:10px 12px}
+.gr figcaption{font:500 10.5px/1.2 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--dim); display:flex; justify-content:space-between}
+.gr figcaption b{color:var(--ice); font-weight:700; letter-spacing:.04em}
+.gr svg{display:block; width:100%; height:70px; margin-top:6px; overflow:visible}
+.gr .gl{stroke:var(--line); stroke-width:1; vector-effect:non-scaling-stroke}
+.gr .ln{fill:none; stroke:var(--ice); stroke-width:1.6; stroke-linejoin:round; vector-effect:non-scaling-stroke}
+.gr .ar{fill:var(--ice); opacity:.1}
+.gr .ln.f{stroke:var(--ok)} .gr .ar.f{fill:var(--ok)}
+.sys-leds{display:flex; flex-wrap:wrap; gap:8px 18px; font:500 11px/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--dim)}
+.led{display:inline-flex; align-items:center; gap:7px}
+.led i{width:9px; height:9px; border-radius:50%; background:var(--faint); flex:none}
+.led.ok i{background:var(--ok); box-shadow:0 0 8px var(--ok); animation:ledp 2s ease-in-out infinite}
+.led.warn i{background:var(--warn); box-shadow:0 0 8px var(--warn)}
+.led.crit i{background:var(--crit); box-shadow:0 0 8px var(--crit); animation:ledp .8s ease-in-out infinite}
+.led em{font-style:normal; color:var(--faint); letter-spacing:.04em; text-transform:none}
+@keyframes ledp{50%{opacity:.45}}
+/* ---- Log terminal ---- */
+.panel[data-p="log"]{grid-column:1/-1}
+.logbox{height:210px; overflow-y:auto; padding:10px 14px; background:#03070c; font:400 12px/1.65 var(--f-mono); border-bottom:1px solid var(--line-soft)}
+:root[data-theme="light"] .logbox{background:#0b1620}
+.ll{display:flex; gap:10px; white-space:pre-wrap; overflow-wrap:anywhere; color:#9fb4c4}
+.ll time{color:#5f7587; flex:none}
+.ll b{flex:none; width:42px; font-weight:700; letter-spacing:.06em}
+.ll.info b{color:#5fd4ff} .ll.ok b{color:#3ddc97} .ll.warn b{color:#ffb547} .ll.err b{color:#ff4d5e} .ll.sys b{color:#8f9cff}
+.ll.err span{color:#ff8b97} .ll.warn span{color:#ffd28a}
+.ll.fresh{animation:llin .5s ease-out}
+@keyframes llin{from{opacity:0; transform:translateX(-8px); background:rgba(95,212,255,.12)}}
+.ll.prompt{color:#5fd4ff}
+.ll.prompt .cur{display:inline-block; width:8px; height:14px; margin-top:4px; background:#5fd4ff; animation:blink 1s steps(1) infinite}
+.logbox::-webkit-scrollbar{width:8px} .logbox::-webkit-scrollbar-thumb{background:#1c2c3b}
+@media (max-width:640px){ .logbox{height:180px; font-size:11.5px} .ll b{width:36px} }
+@media (max-width:1200px){ .sys-meters{grid-template-columns:repeat(3, minmax(0,1fr))} }
+@media (max-width:640px){ .sys-meters{grid-template-columns:repeat(2, minmax(0,1fr))} .sys-graphs{grid-template-columns:1fr} }
 @keyframes bump{0%{color:var(--ice); transform:translateY(-3px)}100%{transform:none}}
 
 /* ---------- Grid & panel ---------- */
@@ -218,14 +283,29 @@ tr.row:hover td{background:rgba(95,212,255,.035)}
 .live{font:700 11px/1 var(--f-mono); letter-spacing:.14em; color:var(--crit); display:flex; align-items:center; gap:6px}
 .live::before{content:""; width:8px; height:8px; border-radius:50%; background:var(--crit); animation:blink 1.2s steps(2) infinite}
 @keyframes blink{50%{opacity:.2}}
-.feed{list-style:none; margin:0; padding:0; overflow-y:auto; max-height:430px; flex:1}
-.msg{display:grid; grid-template-columns:auto minmax(0,1fr); gap:2px 10px; padding:10px 14px; border-bottom:1px solid var(--line-soft)}
-.msg time{font:500 11.5px/1.5 var(--f-mono); color:var(--ice); grid-row:span 2}
-.msg .who{display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:12px; color:var(--dim)}
-.msg .who b{color:var(--fg); font-weight:600}
-.grp{font:600 10px/1 var(--f-mono); letter-spacing:.08em; padding:3px 6px; text-transform:uppercase; border:1px solid currentColor}
-.g-guru{color:var(--ice)} .g-admin{color:var(--warn)} .g-bot{color:var(--ok)} .g-ibubapa{color:var(--info)}
-.msg p{margin:0; color:var(--fg); overflow-wrap:anywhere}
+.panel[data-p="tg"]{align-self:start}
+.feed{list-style:none; margin:0; padding:6px 0; overflow-y:auto; max-height:270px; background:#03070c; font:400 12px/1.5 var(--f-mono); color:#c9d6e0}
+.feed::-webkit-scrollbar{width:8px} .feed::-webkit-scrollbar-thumb{background:#1c2c3b}
+.msg{display:block; padding:5px 12px 6px; cursor:default}
+.msg .ps,.msg .cm{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.msg .br{color:#4f8fd6}                       /* ┌──( )-[ ] gaya Kali */
+.msg .usr{color:#3ddc97; font-weight:700}
+.msg .at{color:#4f8fd6}
+.msg time{color:#e8c46a; font:inherit}
+.msg .cm{display:flex; gap:7px; white-space:normal; overflow:visible}
+.msg .dl{color:#4f8fd6; flex:none; font-weight:700}
+.msg .cmd{flex:1; min-width:0; overflow-wrap:anywhere; color:#e6eef5; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden}
+.msg.open .cmd{display:block}
+.msg.more{cursor:pointer}
+.msg.more:not(.open) .cmd::after{content:" […]"; color:#4f8fd6}
+.msg.more:hover{background:rgba(95,212,255,.05)}
+.msg.queued{visibility:hidden}
+.msg.waiting .cmd{color:#8aa0b3; font-style:italic}
+.msg.typing .cmd::after{content:"█"; color:#5fd4ff; margin-left:2px; animation:blink .7s steps(1) infinite}
+.grp{font:inherit; font-weight:600}
+.g-guru{color:#5fd4ff} .g-admin{color:#ffb547} .g-bot{color:#3ddc97} .g-ibubapa{color:#8f9cff}
+.feed .empty{color:#6c8296}
+.feed .sk-line{background:#12202d}
 .msg.new{animation:incoming 2.4s ease-out}
 @keyframes incoming{0%{background:var(--ice-soft); transform:translateX(-6px)}20%{transform:none}100%{background:transparent}}
 
@@ -277,9 +357,6 @@ body::before{ /* alur imbasan menyapu skrin dari atas ke bawah */
   animation:sapu 9s linear infinite;
 }
 @keyframes sapu{to{transform:translateY(calc(100vh + 140px))}}
-.msg.new p{animation:taip 1.4s steps(36) both; position:relative}   /* teks mesej baru "ditaip" */
-.msg.new p::after{content:"▌"; color:var(--ice); margin-left:2px; animation:blink .6s steps(2) 4}
-@keyframes taip{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
 .ph h2::after{content:"_"; color:var(--ice); margin-left:4px; animation:blink 1s steps(2) infinite}  /* kursor berkelip pada tajuk panel */
 .live{text-shadow:0 0 8px var(--crit)}
 
@@ -305,6 +382,9 @@ body.tv .tablewrap, body.tv .feed{max-height:52vh}
 }
 /* ---------- Kawalan paparan (tema, saiz teks) ---------- */
 .tools-h{display:flex; gap:6px}
+.hud-search{background:var(--panel2); color:var(--fg); border:1px solid var(--line); padding:8px 10px; font:400 12px/1 var(--f-mono); width:170px; min-width:0}
+.hud-search:focus{outline:none; border-color:var(--ice)}
+[hidden]{display:none !important}
 .btn-sq{padding:9px 11px; min-width:38px}
 
 /* ---------- Toast & buat asal ---------- */
@@ -412,7 +492,7 @@ button.tile{font:inherit; text-align:center}
 }
 @media (max-width:900px){
   .grid .panel[data-p="tugas"]{order:1} .grid .panel[data-p="classroom"]{order:2} .grid .panel[data-p="relief"]{order:3} .grid .panel[data-p="jadual"]{order:4}
-  .grid .panel[data-p="tg"]{order:5} .grid .panel[data-p="pwa"]{order:6}
+  .grid .panel[data-p="tg"]{order:5} .grid .panel[data-p="pwa"]{order:6} .grid .panel[data-p="sys"]{order:7} .grid .panel[data-p="log"]{order:8}
 }
 @media (max-width:520px){
   .eyebrow,.kpi .lbl,.entry-field label{font-size:11.5px}
@@ -452,6 +532,7 @@ button.tile{font:inherit; text-align:center}
       <span>DATA</span><b class="demo" id="mode">CONTOH</b>
       <span>SEGAR SEMULA</span><b id="sync" class="mono">30s</b>
     </div>
+    <input type="search" id="hud-search" class="hud-search" placeholder="Cari semua… (Ctrl+K)" aria-label="Carian global" autocomplete="off">
     <div class="tools-h" role="group" aria-label="Paparan">
       <button class="btn btn-sq" id="fontMinus" type="button" aria-label="Kecilkan teks" title="Kecilkan teks">A&minus;</button>
       <button class="btn btn-sq" id="fontPlus" type="button" aria-label="Besarkan teks" title="Besarkan teks">A+</button>
@@ -526,6 +607,25 @@ button.tile{font:inherit; text-align:center}
     <div class="ph"><h2 id="h-jd">Jadual Hari Ini</h2><small class="mono" style="color:var(--dim)" id="jdate"></small></div>
     <ol class="tl" id="tl"></ol>
     <div class="pf">Sumber: <b>Tab "Jadual"</b></div>
+  </section>
+
+  <section class="panel" data-p="sys" aria-labelledby="h-sys">
+    <div class="ph"><h2 id="h-sys">Telemetri Sistem</h2><small class="mono" style="color:var(--dim)" id="sysNote"></small></div>
+    <div class="sys-body">
+      <div class="sys-meters" id="sysMeters"></div>
+      <div class="sys-graphs">
+        <figure class="gr"><figcaption>Latensi API Apps Script <b id="gLatV">—</b></figcaption><svg id="gLat" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"></svg></figure>
+        <figure class="gr"><figcaption>Kadar bingkai (FPS) <b id="gFpsV">—</b></figcaption><svg id="gFps" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"></svg></figure>
+      </div>
+      <div class="sys-leds" id="sysLeds"></div>
+    </div>
+    <div class="pf">Bacaan sebenar daripada pelayar peranti ini · ciri yang tidak disokong dipaparkan "T/S" · beban UI ialah anggaran lengahan gelung peristiwa</div>
+  </section>
+
+  <section class="panel" data-p="log" aria-labelledby="h-log">
+    <div class="ph"><h2 id="h-log">Log Aktiviti</h2><div style="display:flex; align-items:center; gap:10px"><small class="mono" style="color:var(--dim)" id="logCount"></small><button class="btn" id="logClear" type="button">Kosongkan</button></div></div>
+    <div class="logbox" id="logBox" role="log" aria-live="off" tabindex="0" aria-label="Log aktiviti sistem"></div>
+    <div class="pf">Peristiwa sebenar: segar semula data, mesej Telegram baharu, perubahan tugasan/relief, simpan ke Sheet, sambungan internet · disimpan pada peranti ini (80 baris terakhir)</div>
   </section>
 </main>
 
@@ -795,6 +895,7 @@ const writeList = (key, value) => store.set(key, JSON.stringify(value));
 /* ---------- Toast & buat asal ---------- */
 function toast(msg, type, o){
   o = o || {};
+  if (window.LOG) LOG.add(type === "err" ? "ERR" : type === "warn" ? "WARN" : type === "ok" ? "OK" : "INFO", msg);
   const box = $("#toasts");
   const el = document.createElement("div");
   el.className = "toast " + (type || "");
@@ -886,18 +987,39 @@ function applyData(d, live){
   const cr = d.classroom;   // tugasan Google Classroom (jika diaktifkan di Apps Script)
   $("#crNote").textContent = cr ? ` · Classroom: ${cr.n} tugasan` + (cr.error ? ` (ralat: ${cr.error})` : "") : "";
   $("#alert").hidden = true;
+  if (window.LOG && live) {   // catat perubahan data sebenar sahaja (bukan setiap segar semula)
+    const ts = (DATA.tugasan || []), cnt = s => ts.filter(t => statusOf(t) === s).length;
+    const cur = { tugasan: ts.length, lewat: cnt("lewat"), hari: cnt("hari"), siap: cnt("selesai"), relief: (DATA.relief || []).length, pwa: (DATA.pwa || []).length };
+    if (!logPrev) LOG.add("INFO", `data dimuat · ${cur.tugasan} tugasan, ${cur.relief} relief, ${cur.pwa} aplikasi`);
+    else {
+      const dlt = (a, b) => a - b, say = (n, w) => (n > 0 ? "+" : "") + n + " " + w;
+      if (cur.tugasan !== logPrev.tugasan) LOG.add("INFO", "tugasan: " + say(dlt(cur.tugasan, logPrev.tugasan), "(jumlah " + cur.tugasan + ")"));
+      if (cur.lewat !== logPrev.lewat) LOG.add(cur.lewat > logPrev.lewat ? "WARN" : "OK", `tugasan lewat: ${logPrev.lewat} → ${cur.lewat}`);
+      if (cur.hari !== logPrev.hari) LOG.add("WARN", `tamat hari ini: ${logPrev.hari} → ${cur.hari}`);
+      if (cur.siap !== logPrev.siap) LOG.add("OK", `tugasan selesai: ${logPrev.siap} → ${cur.siap}`);
+      if (cur.relief !== logPrev.relief) LOG.add("INFO", `relief: ${logPrev.relief} → ${cur.relief}`);
+      if (cur.pwa !== logPrev.pwa) LOG.add("INFO", `aplikasi PWA: ${logPrev.pwa} → ${cur.pwa}`);
+    }
+    logPrev = cur;
+  }
   const firstLoad = seenMsg.size === 0;
   const key = m => m.id || (String(m.raw ?? m.masa) + "|" + (m.teks || m.mesej));
   const fresh = new Set(d.telegram.filter(m => !firstLoad && !seenMsg.has(key(m))).map(key));
+  if (window.LOG && fresh.size) LOG.add("INFO", `${fresh.size} mesej Telegram baharu`);
   d.telegram.forEach(m => seenMsg.add(key(m)));
   setFeed(d.telegram);
   renderAll(); renderFeed(fresh, key); renderPwa(); renderTicker(); renderClassroom();
 }
+let syncWasOk = false, logPrev = null;
 function loadData(){
   if (!LIVE) return;
   const key = getKey();
   if (!key && NEED_KEY) { askKey(); return; }
+  const t0 = performance.now();
   const fail = err => {
+    if (window.SYS) SYS.ping(null);
+    if (window.LOG) LOG.add("ERR", "sync gagal: " + String((err && err.message) || err).slice(0, 120));
+    syncWasOk = false;
     const msg = String((err && err.message) || err);
     if (/unauthorized/i.test(msg)) { NEED_KEY = true; setKey(""); askKey("Kunci akses tidak sah. Sila cuba lagi."); return; }
     if (!DATA || !DATA.loaded) { const c = store.get("cc-last", ""); if (c) { try { applyData(JSON.parse(c), true); } catch(e){} } }
@@ -907,6 +1029,9 @@ function loadData(){
   };
   const ok = d => {
     if (!d || d.error) return fail(d ? d.error : "Tiada data");
+    if (window.SYS) SYS.ping(performance.now() - t0);
+    if (window.LOG && !syncWasOk) LOG.add("OK", "sync berjaya · latensi " + Math.round(performance.now() - t0) + " ms");
+    syncWasOk = true;
     store.set("cc-last", JSON.stringify(d));
     applyData(d, true);
     syncQueuedTasks();
@@ -1393,7 +1518,44 @@ function dueText(t){
 }
 
 /* ---------- KPI ---------- */
-let lastKpi = {};
+let lastKpi = {}, kpiDrawn = false;
+/* ---------- Gauge cincin & sparkline KPI ---------- */
+const KPI_C = 2 * Math.PI * 15;
+function kpiRing(r, anim){
+  r = Math.max(0, Math.min(1, r || 0));
+  return `<div class="ring ${anim ? "in" : ""}" aria-hidden="true"><svg viewBox="0 0 40 40" style="--c:${KPI_C.toFixed(2)};--off:${(KPI_C * (1 - r)).toFixed(2)}"><circle class="trk" cx="20" cy="20" r="15"/><circle class="arc" cx="20" cy="20" r="15"/></svg><b>${Math.round(r * 100)}</b></div>`;
+}
+/* Simpan nilai harian (14 hari terakhir) dalam localStorage untuk sparkline */
+function kpiHistory(defs){
+  let all = {};
+  try { all = JSON.parse(localStorage.getItem("cc-kpi-hist") || "{}") || {}; } catch(e){}
+  const today = ymd(new Date());
+  all[today] = all[today] || {};
+  defs.forEach(([id, fn]) => { all[today][id] = fn(id); });
+  Object.keys(all).sort().slice(0, -14).forEach(d => delete all[d]);
+  if (!(LIVE && DATA && !DATA.loaded)) { try { localStorage.setItem("cc-kpi-hist", JSON.stringify(all)); } catch(e){} }
+  const days = Object.keys(all).sort().slice(-7), out = {};
+  defs.forEach(([id]) => { out[id] = days.map(d => all[d][id]).filter(v => v !== undefined); });
+  return out;
+}
+function kpiSpark(v){
+  const W = 100, H = 22;
+  if (!v || v.length < 2) return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><line class="flat" x1="0" y1="${H/2}" x2="${W}" y2="${H/2}"/></svg>`;
+  const mn = Math.min(...v), mx = Math.max(...v), span = mx - mn || 1;
+  const pts = v.map((y, i) => [i / (v.length - 1) * W, H - 3 - (y - mn) / span * (H - 6)]);
+  const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  const e = pts[pts.length - 1];
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path class="ar" d="${d} L${W} ${H} L0 ${H}Z"/><path class="ln" d="${d}" vector-effect="non-scaling-stroke"/><circle class="dot" cx="${e[0]}" cy="${e[1].toFixed(1)}" r="2"/></svg>`;
+}
+
+/* Kesan menaip pada tajuk kecil pengepala (sekali sahaja semasa dimuatkan) */
+(() => {
+  const el = document.querySelector(".eyebrow"); if (!el) return;
+  const txt = el.textContent; el.classList.add("typing");
+  if (matchMedia("(prefers-reduced-motion:reduce)").matches) return;
+  let i = 0; el.textContent = "";
+  const t = setInterval(() => { el.textContent = txt.slice(0, ++i); if (i >= txt.length) clearInterval(t); }, 35);
+})();
 function renderKpis(){
   if (isLoading()) { $("#kpis").innerHTML = Array(6).fill('<div class="sk sk-kpi"></div>').join(""); return; }
   const s = tasksVis().map(statusOf);
@@ -1413,11 +1575,17 @@ function renderKpis(){
     { id:"msg", lbl:"Mesej Hari Ini", val:mesejBaru, sub:groups ? `dari ${groups} kumpulan` : "Telegram Web belum disambung", cls:"info" },
     pwaKpi,
   ];
+  const ratio = { total: total ? (total - siap) / total : 0, siap: total ? siap / total : 0, hari: total ? hari / total : 0, lewat: total ? lewat / total : 0, msg: Math.min(1, mesejBaru / 20), pwa: DATA.pwa.length ? on / DATA.pwa.length : 0 };
+  const num = k => typeof k.val === "number" ? k.val : parseInt(k.val, 10) || 0;
+  const hist = kpiHistory(items.map(k => [k.id, id => id === "pwa" ? on : num(k)]));
+  const first = !kpiDrawn; kpiDrawn = true;
   $("#kpis").innerHTML = items.map(k => `
     <div class="kpi ${k.cls}">
+      ${kpiRing(ratio[k.id], first)}
       <div class="lbl">${k.lbl}</div>
       <div class="val ${lastKpi[k.id]!==undefined && lastKpi[k.id]!==k.val ? "bump":""}">${k.val}</div>
       <div class="sub">${k.sub}</div>
+      ${kpiSpark(hist[k.id])}
     </div>`).join("");
   items.forEach(k => lastKpi[k.id] = k.val);
 }
@@ -1536,12 +1704,54 @@ function grpClass(n){
   return GPAL[h % GPAL.length];
 }
 function msgHTML(m, isNew){
+  const txt = String(m.teks || m.mesej || "");
   return `<li class="msg ${isNew?"new":""}">
-    <time class="mono">${hhmm(m.masa)}</time>
-    <div class="who"><span class="grp ${grpClass(m.kumpulan)}">${esc(m.kumpulan)}</span><b>${esc(m.pengirim)}</b></div>
-    <p>${esc(m.teks || m.mesej)}</p>
+    <div class="ps"><span class="br">┌──(</span><b class="usr">${esc(m.pengirim || "?")}</b><span class="at">@</span><span class="grp ${grpClass(m.kumpulan)}">${esc(m.kumpulan || "-")}</span><span class="br">)-[</span><time>${hhmm(m.masa)}</time><span class="br">]</span></div>
+    <div class="cm"><span class="br">└─</span><span class="dl">$</span><span class="cmd" data-t="${esc(txt)}">${esc(txt)}</span></div>
   </li>`;
 }
+/* Kesan menaip gaya terminal untuk mesej baharu; klik mesej untuk buka/tutup teks penuh */
+let tgReplay = true, tgChain = Promise.resolve();
+const tgSleep = ms => new Promise(r => setTimeout(r, ms));
+/* Taip satu mesej: (pilihan) "sedang menaip..." dahulu, kemudian teks ditaip aksara demi aksara */
+async function tgType(li, withWait){
+  const el = li.querySelector(".cmd"); if (!el) return;
+  const full = el.dataset.t || "", TYPE_MAX = 120, step = 1;   // hanya ~2 baris pertama kelihatan, jadi taip 120 aksara sahaja
+  const live = () => li.isConnected && !li.dataset.skip;
+  li.classList.remove("queued"); li.classList.add("typing");
+  if (withWait) {
+    const who = (li.querySelector(".usr") || {}).textContent || "seseorang";
+    li.classList.add("waiting");
+    for (let d = 0; d < 5 && live(); d++) { el.textContent = who + " sedang menaip" + ".".repeat(d % 4); await tgSleep(260); }
+    li.classList.remove("waiting");
+  }
+  el.textContent = "";
+  for (let i = 0; i < Math.min(full.length, TYPE_MAX) && live(); i += step) { el.textContent = full.slice(0, i + step); await tgSleep(30); }
+  el.textContent = full; li.classList.remove("typing");
+  if (li.isConnected) li.classList.toggle("more", el.scrollHeight > el.clientHeight + 1);
+}
+function tgPost(){
+  const feedEl = $("#feed"); if (!feedEl) return;
+  const reduce = matchMedia("(prefers-reduced-motion:reduce)").matches;
+  const items = [...feedEl.querySelectorAll(".msg")];
+  const mark = li => { const el = li.querySelector(".cmd"); if (el) li.classList.toggle("more", li.classList.contains("open") || el.scrollHeight > el.clientHeight + 1); };
+  if (reduce) { items.forEach(mark); return; }
+  const todo = [];
+  items.forEach(li => { if (li.classList.contains("new") && !li.dataset.typed) { li.dataset.typed = "1"; todo.push([li, true]); } });
+  if (tgReplay && items.length) {   // main semula mesej sedia ada, atas ke bawah, seolah-olah sedang ditaip
+    tgReplay = false;
+    items.slice(0, 5).forEach(li => { if (!li.dataset.typed) { li.dataset.typed = "1"; todo.push([li, false]); } });
+  }
+  todo.forEach(([li]) => { const el = li.querySelector(".cmd"); if (el) { el.textContent = ""; li.classList.add("queued"); } });
+  todo.forEach(([li, w]) => { tgChain = tgChain.then(() => tgType(li, w)).catch(() => {}); });
+  items.forEach(li => { if (!li.dataset.typed) mark(li); });
+}
+$("#feed").addEventListener("click", e => {
+  const q = e.target.closest(".msg.typing, .msg.queued"); if (q) { q.dataset.skip = "1"; q.querySelector(".cmd").textContent = q.querySelector(".cmd").dataset.t; q.classList.remove("queued","typing","waiting"); return; }
+  const li = e.target.closest(".msg.more, .msg.open"); if (!li) return;
+  if (window.getSelection && String(getSelection())) return;   // jangan tutup/buka ketika menyalin teks
+  li.classList.toggle("open");
+});
 let tgSel = "";
 function renderFeed(fresh, key){
   if (isLoading()) { $("#feed").innerHTML = `<li>${skLines(4, [85, 70, 90, 60])}</li>`; return; }
@@ -1549,11 +1759,15 @@ function renderFeed(fresh, key){
   if (tgSel && !groups.includes(tgSel)) tgSel = "";
   syncSelect($("#tgFilter"), groups, tgSel);
   const list = feed.filter(m => !tgSel || m.kumpulan === tgSel);
+  const sig = tgSel + "§" + list.map(m => [m.kumpulan, m.pengirim, String(m.masa), m.teks || m.mesej].join("|")).join("¶");
+  if (sig === renderFeed.sig && $("#feed").querySelector(".msg")) return;   // tiada perubahan: jangan lukis semula (kekalkan penaipan & mesej yang dibuka)
+  renderFeed.sig = sig;
   $("#feed").innerHTML = list.length
     ? list.map(m => msgHTML(m, fresh && key && fresh.has(key(m)))).join("")
     : `<li class="empty">${feed.length ? "Tiada mesej untuk kumpulan ini." : "Belum ada mesej. Buka kumpulan di web.telegram.org (skrip Tampermonkey aktif) dan mesej akan muncul di sini dalam masa sekitar 1 minit."}</li>`;
+  tgPost();
 }
-$("#tgFilter").addEventListener("change", e => { tgSel = e.target.value; renderFeed(); });
+$("#tgFilter").addEventListener("change", e => { tgSel = e.target.value; tgReplay = true; renderFeed(); });
 let poolIdx = 0;
 function pushDemoMessage(){
   if (LIVE) return;
@@ -1561,6 +1775,7 @@ function pushDemoMessage(){
   feed.unshift(m); feed = feed.slice(0,40); mesejBaru++;
   if (!tgSel || m.kumpulan === tgSel) $("#feed").insertAdjacentHTML("afterbegin", msgHTML(m,true));
   const items = $("#feed").children; while (items.length > 40) items[items.length-1].remove();
+  tgPost();
   renderKpis();
 }
 
@@ -1892,12 +2107,123 @@ $("#tvBtn").addEventListener("click", async () => {
 /* ---------- Mula ---------- */
 if (LIVE) { $("#mode").textContent = "MEMUATKAN…"; DATA = prepare({tugasan:[], pwa:[], relief:[], jadual:[], pengumuman:[], telegram:[]}); renderAll(); renderFeed(); renderPwa(); renderTicker(); loadData(); }
 else applyData(SAMPLE, false);
+/* ---------- Telemetri sistem (bacaan sebenar pelayar) ---------- */
+/* ---------- Log aktiviti gaya terminal ---------- */
+window.LOG = (() => {
+  const KEY = "cc-log", MAX = 80;
+  const LV = { INFO: "info", OK: "ok", WARN: "warn", ERR: "err", SYS: "sys" };
+  let rows = [];
+  try { rows = JSON.parse(localStorage.getItem(KEY) || "[]").filter(r => r && r.t && r.m).slice(-MAX); } catch (e) {}
+  const pad2 = n => String(n).padStart(2, "0");
+  const stamp = ts => { const d = new Date(ts); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
+  const line = (r, fresh) => `<div class="ll ${LV[r.l] || "info"}${fresh ? " fresh" : ""}"><time>${stamp(r.t)}</time><b>${esc(r.l)}</b><span>${esc(r.m)}</span></div>`;
+
+  function paint(fresh){
+    const box = $("#logBox"); if (!box) return;
+    const stick = box.scrollTop + box.clientHeight >= box.scrollHeight - 24;
+    box.innerHTML = rows.map((r, i) => line(r, fresh && i === rows.length - 1)).join("") + '<div class="ll prompt"><span>&gt;</span><i class="cur"></i></div>';
+    if (stick) box.scrollTop = box.scrollHeight;
+    const n = $("#logCount"); if (n) n.textContent = rows.length + " baris";
+  }
+  function add(level, msg){
+    rows.push({ t: Date.now(), l: LV[level] ? level : "INFO", m: String(msg).slice(0, 220) });
+    if (rows.length > MAX) rows.shift();
+    try { localStorage.setItem(KEY, JSON.stringify(rows)); } catch (e) {}
+    paint(true);
+  }
+  function clear(){ rows = []; try { localStorage.removeItem(KEY); } catch (e) {} add("SYS", "log dikosongkan"); }
+
+  const btn = $("#logClear"); if (btn) btn.addEventListener("click", clear);
+  paint(false);
+  add("SYS", `enjin dimulakan · ${LIVE ? "mod langsung (Sheet)" : "mod contoh"}`);
+  window.addEventListener("online", () => add("OK", "sambungan internet dipulihkan"));
+  window.addEventListener("offline", () => add("ERR", "sambungan internet terputus; guna data tersimpan"));
+  return { add, clear };
+})();
+
+window.SYS = (() => {
+  const N = 40, lat = [], fps = [];
+  let frames = 0, curFps = 0, lag = 0, lastTick = performance.now(), lastOk = null, lastFail = false, batt = null;
+  const conn = () => navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+  const cls = (v, warnBelow, critBelow) => v < critBelow ? "crit" : v < warnBelow ? "warn" : "";
+  const meter = (n, v, unit, pct, sub, c) => `<div class="mt ${c || ""}"><div class="n">${n}</div><div class="v">${v}<small>${unit}</small></div><div class="bar2"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div><div class="s">${sub}</div></div>`;
+  const chart = (el, data, max, f) => {
+    if (data.length < 2) { el.innerHTML = '<line class="gl" x1="0" y1="30" x2="200" y2="30"/>'; return; }
+    const pts = data.map((v, i) => [(i / (N - 1)) * 200, 58 - Math.min(v, max) / max * 54]);
+    const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+    el.innerHTML = [15, 30, 45].map(y => `<line class="gl" x1="0" y1="${y}" x2="200" y2="${y}"/>`).join("")
+      + `<path class="ar ${f ? "f" : ""}" d="${d} L${pts[pts.length - 1][0].toFixed(1)} 60 L${pts[0][0].toFixed(1)} 60Z"/><path class="ln ${f ? "f" : ""}" d="${d}"/>`;
+  };
+  const led = (name, state, note) => `<span class="led ${state}"><i></i>${name}${note ? " <em>" + note + "</em>" : ""}</span>`;
+
+  function render(){
+    const c = conn(), pm = performance && performance.memory, m = [];
+    m.push(document.hidden
+      ? meter("FPS", "—", "", 0, "tab di latar", "off")
+      : meter("FPS", curFps, "fps", curFps / 60 * 100, curFps >= 50 ? "lancar" : curFps >= 30 ? "sederhana" : "perlahan", cls(curFps, 50, 30)));
+    const load = Math.min(100, Math.round(lag / 2));
+    m.push(meter("Beban UI", load, "%", load, `lengahan ${Math.round(lag)} ms (anggaran)`, load > 60 ? "crit" : load > 30 ? "warn" : ""));
+    if (pm) {
+      const u = pm.usedJSHeapSize / 1048576, l = pm.jsHeapSizeLimit / 1048576, p = u / l * 100;
+      m.push(meter("Memori JS", Math.round(u), "MB", p, `had ${Math.round(l)} MB`, p > 80 ? "crit" : p > 60 ? "warn" : ""));
+    } else {
+      m.push(meter("Memori", navigator.deviceMemory ? "≥" + navigator.deviceMemory : "T/S", navigator.deviceMemory ? "GB" : "", 0, `${navigator.hardwareConcurrency || "?"} teras CPU`, "off"));
+    }
+    if (navigator.onLine === false) m.push(meter("Rangkaian", "OFF", "", 0, "tiada internet", "crit"));
+    else if (c && c.downlink !== undefined) m.push(meter("Rangkaian", c.downlink, "Mbps", c.downlink / 10 * 100, `${(c.effectiveType || "").toUpperCase()} · RTT ${c.rtt ?? "?"} ms`, cls(c.downlink, 2, 0.5)));
+    else m.push(meter("Rangkaian", "ON", "", 100, "butiran tidak disokong (T/S)", ""));
+    if (batt) { const p = Math.round(batt.level * 100); m.push(meter("Bateri", p, "%", p, batt.charging ? "mengecas" : "guna bateri", batt.charging ? "" : cls(p, 40, 20))); }
+    else m.push(meter("Bateri", "T/S", "", 0, "tidak disokong pelayar", "off"));
+    $("#sysMeters").innerHTML = m.join("");
+
+    const okLat = lat.filter(v => v !== null);
+    chart($("#gLat"), okLat, Math.max(1000, ...okLat), false);
+    chart($("#gFps"), fps, 60, true);
+    const lv = lat.length ? lat[lat.length - 1] : null;
+    $("#gLatV").textContent = lv === null ? (lat.length ? "GAGAL" : "—") : Math.round(lv) + " ms";
+    $("#gFpsV").textContent = document.hidden ? "—" : curFps + " fps";
+
+    const cr = DATA && DATA.classroom;
+    const sw = "serviceWorker" in navigator ? (navigator.serviceWorker.controller ? ["ok", "aktif"] : ["warn", "belum mengawal"]) : ["crit", "tiada"];
+    $("#sysLeds").innerHTML = [
+      led("Internet", navigator.onLine === false ? "crit" : "ok"),
+      led("Apps Script", !LIVE ? "warn" : lastFail ? "crit" : lastOk === null ? "warn" : "ok", !LIVE ? "mod contoh" : lastOk !== null ? Math.round(lastOk) + " ms" : ""),
+      led("Telegram", feed && feed.length ? "ok" : "warn", feed && feed.length ? feed.length + " mesej" : "tiada data"),
+      led("Classroom", cr ? (cr.error ? "crit" : "ok") : "warn", cr ? (cr.error ? "ralat" : cr.n + " tugasan") : "mati"),
+      led("Service Worker", sw[0], sw[1])
+    ].join("");
+    $("#sysNote").textContent = "kemas kini " + hhmm(new Date());
+  }
+
+  const frame = () => { frames++; requestAnimationFrame(frame); };
+  requestAnimationFrame(frame);
+  setInterval(() => {
+    const now = performance.now();
+    lag = Math.max(0, now - lastTick - 1000); lastTick = now;
+    curFps = document.hidden ? 0 : Math.min(60, Math.round(frames * 1000 / (1000 + lag)));
+    frames = 0;
+    if (!document.hidden) { fps.push(curFps); if (fps.length > N) fps.shift(); }
+    render();
+  }, 1000);
+  if (navigator.getBattery) navigator.getBattery().then(b => { batt = b; }).catch(() => {});
+
+  return {
+    ping(ms){
+      if (ms === null) { lastFail = true; lat.push(null); } else { lastFail = false; lastOk = ms; lat.push(ms); }
+      if (lat.length > N) lat.shift();
+      render();
+    }
+  };
+})();
+
 tickClock();
 setInterval(tickClock, 1000);
 setInterval(cycle, 1000);
 setInterval(pushDemoMessage, 15000);
 </script>
 
+<script>window.CC_ENGINE = { host: true };</script>
+<script src="app-engine.js"></script>
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
