@@ -1631,7 +1631,7 @@ function renderFeed(){
 $("#tgFilter").addEventListener("change", renderFeed);
 
 /* ---------- PWA ---------- */
-const initials = n => String(n || "?").replace(/^e-/i, "E ").split(/s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+const initials = n => String(n || "?").replace(/^e-/i, "E ").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
 const favicon = u => "https://www.google.com/s2/favicons?sz=64&domain_url=" + encodeURIComponent(u);
 function renderPwa(){
   if (!(DATA && DATA.loaded)) { $("#tiles").innerHTML = Array(4).fill('<div class="sk sk-tile"></div>').join(""); return; }
