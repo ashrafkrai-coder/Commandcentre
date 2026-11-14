@@ -451,6 +451,7 @@ tr.row td{display:block;border:0 !important;padding:0;min-width:0}tr.row:hover t
         <a class="btn" href="https://classroom.google.com/a/not-turned-in/all" target="_blank" rel="noopener" title="Senarai tugasan belum diserahkan">To-do &#8599;</a>
       </span>
     </div>
+    <div class="chips cls-tabs" id="clsTabs"></div>
     <div class="cls-list" id="clsList"></div>
     <div class="pf">Pautan terus ke kelas · senarai kelas diubah dalam <b>config.js</b> · tugasan dilihat & dihantar dalam Classroom</div>
   </section>
@@ -1648,21 +1649,60 @@ function renderPwa(){
 }
 
 /* ---------- Classroom ---------- */
+/* ---------- Pintasan Google Classroom (pautan dalam config.js) ---------- */
+let clsView = store.get("cc-cls-view", "semua");   // semua | teaching | enrolled
+const CLS_GROUPS = [
+  { id: "teaching", lbl: "Mengajar (Teaching)" },
+  { id: "enrolled", lbl: "Disertai (Enrolled)" },
+];
 function renderClassroom(){
-  const cr = DATA.classroom || { classes: [], n: 0 };
-  $("#clsCount").textContent = cr.n ? `${cr.n} tugasan` : "";
-  const list = $("#clsList");
-  if (!cr.classes || !cr.classes.length) {
-    list.innerHTML = `<div class="empty">Tiada kelas dikonfigurasi.</div>`;
+  const ok = c => c && /^https?:\/\//i.test(c.pautan || "");
+  const cfg = ((window.CC_CONFIG && window.CC_CONFIG.CLASSROOM) || []).filter(ok);
+  const api = (DATA && DATA.kelasClassroom) || [];           // semua kelas aktif, dibaca oleh Apps Script
+  const tokOf = u => ((/\/c\/([A-Za-z0-9_-]+)/.exec(u || "")) || [])[1] || "";
+  const tokId = id => btoa(String(id)).replace(/=+$/, "");   // ID kelas -> token dalam pautan Classroom
+  const cfgBy = new Map(cfg.map(c => [tokOf(c.pautan), c]));
+  const used = new Set();
+  const list = api.map(c => {
+    const t = tokId(c.id), cf = cfgBy.get(t);
+    used.add(t);
+    return {
+      nama: (cf && cf.nama) || c.nama || "Kelas",
+      pautan: c.pautan || ("https://classroom.google.com/c/" + t),
+      utama: !!(cf && cf.utama),
+      nota: (cf && cf.nota) || c.bahagian || "",
+      jenis: c.jenis || (c.peranan === "Guru" ? "teaching" : "enrolled"),
+    };
+  });
+  cfg.forEach(c => {                                         // pautan manual yang tiada dalam senarai API
+    if (used.has(tokOf(c.pautan))) return;
+    list.push({ ...c, jenis: /guru|mengajar|teach/i.test(String(c.peranan || "")) ? "teaching" : "enrolled" });
+  });
+  $("#clsCount").textContent = list.length ? `${list.length} kelas` : "";
+  if (!list.length) {
+    $("#clsTabs").innerHTML = "";
+    $("#clsList").innerHTML = `<div class="relief-empty">Tiada kelas. Tambah senarai kelas dalam <b>config.js</b> (CLASSROOM).</div>`;
     return;
   }
-  list.innerHTML = `<div class="cls-grid">` + cr.classes.map(c => `
-    <a class="cls ${c.utama ? 'main' : ''}" href="${esc(c.pautan)}" target="_blank" rel="noopener">
-      <div class="cls-n">${esc(c.nama)}</div>
-      <div class="cls-s">${esc(c.kod || "")} ${c.tugasan ? `· ${c.tugasan} belum diserahkan` : ""}</div>
-    </a>
-  `).join("") + `</div>`;
+  const by = id => list.filter(c => c.jenis === id).sort((a, b) => (!!b.utama - !!a.utama) || String(a.nama).localeCompare(String(b.nama)));
+  const groups = CLS_GROUPS.map(g => ({ ...g, items: by(g.id) })).filter(g => g.items.length);
+  if (groups.length < 2 || !groups.some(g => g.id === clsView)) clsView = "semua";   // satu kumpulan sahaja / pilihan tidak sah
+  $("#clsTabs").innerHTML = groups.length < 2 ? "" :
+    [{ id: "semua", lbl: "Semua", n: list.length }, ...groups.map(g => ({ id: g.id, lbl: g.lbl, n: g.items.length }))]
+      .map(t => `<button type="button" class="chip" data-v="${t.id}" aria-pressed="${t.id === clsView}">${esc(t.lbl)}<span class="n">${t.n}</span></button>`).join("");
+  const card = c => `
+    <a class="cls ${c.utama ? "main" : ""}" href="${esc(c.pautan)}" target="_blank" rel="noopener">
+      <span class="cls-n">${esc(c.nama || "Kelas")}</span>
+      <span class="cls-s">${esc(c.nota || (c.utama ? "Kelas utama" : "Buka kelas"))} &#8599;</span>
+    </a>`;
+  $("#clsList").innerHTML = groups.filter(g => clsView === "semua" || g.id === clsView).map(g => `
+    <div class="cls-grp">${esc(g.lbl)} · ${g.items.length}</div>
+    <div class="cls-grid">${g.items.map(card).join("")}</div>`).join("");
 }
+$("#clsTabs").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  clsView = b.dataset.v; store.set("cc-cls-view", clsView); renderClassroom();
+});
 
 /* ---------- Ticker & Relief ---------- */
 function renderTicker(){
@@ -1781,6 +1821,7 @@ function openTask(i){
 function delTask(i){
   const t = DATA.tugasan[i]; if (!t) return;
   DATA.tugasan.splice(i, 1); refreshAll(); logAdd("warn", "Tugasan dipadam: " + t.tajuk);
+  pushSheet("delete", "Tugasan", "tugasan", { ...sheetRow(t, ["localId","_row"]), _check: { tajuk: t.tajuk } }, "padam " + t.tajuk);
   withUndo("Tugasan dipadam", () => { DATA.tugasan.splice(i, 0, t); refreshAll(); logAdd("info", "Tugasan dipulihkan: " + t.tajuk); });
 }
 $("#addTaskBtn").addEventListener("click", () => openTask(-1));
@@ -1794,8 +1835,8 @@ $("#entryForm").addEventListener("submit", e => {
   if (!rec.tajuk || !rec.pic || !rec.unit || !parseYMD(rec.akhir)) { $("#entryStatus").textContent = "Sila lengkapkan semua medan."; return; }
   if (rec.status === "Selesai") rec.kemajuan = 100;
   rec.tarikh = parseYMD(rec.akhir);
-  if (taskEdit >= 0) { Object.assign(DATA.tugasan[taskEdit], rec); logAdd("ok", "Tugasan dikemas kini: " + rec.tajuk); toast("Tugasan dikemas kini", "ok"); }
-  else { DATA.tugasan.push(rec); logAdd("ok", "Tugasan baharu: " + rec.tajuk + " (" + rec.pic + ")"); toast("Tugasan ditambah", "ok"); }
+  if (taskEdit >= 0) { const cur = DATA.tugasan[taskEdit]; Object.assign(cur, rec); logAdd("ok", "Tugasan dikemas kini: " + rec.tajuk); toast("Tugasan dikemas kini", "ok"); pushSheet("update", "Tugasan", "tugasan", sheetRow(cur, TASK_KEYS), "kemas kini " + rec.tajuk); }
+  else { rec.localId = newId("task"); DATA.tugasan.push(rec); logAdd("ok", "Tugasan baharu: " + rec.tajuk + " (" + rec.pic + ")"); toast("Tugasan ditambah", "ok"); pushSheet("append", "Tugasan", "tugasan", sheetRow(rec, TASK_KEYS), "tambah " + rec.tajuk); }
   closeModal("entryModal"); refreshAll();
 });
 
@@ -1816,9 +1857,10 @@ $("#reliefList").addEventListener("click", e => {
   const b = e.target.closest("button[data-ra]"); if (!b) return;
   const i = +b.dataset.i, r = DATA.relief[i]; if (!r) return;
   if (b.dataset.ra === "edit") openRelief(i);
-  else if (b.dataset.ra === "done") { r.status = "Selesai"; refreshAll(); logAdd("ok", "Relief selesai: " + r.kelas + " " + (r.masa || "")); toast("Relief ditanda selesai", "ok"); }
+  else if (b.dataset.ra === "done") { r.status = "Selesai"; pushSheet("update", "Relief", "relief", sheetRow(r, RELIEF_KEYS), "selesai " + r.kelas); refreshAll(); logAdd("ok", "Relief selesai: " + r.kelas + " " + (r.masa || "")); toast("Relief ditanda selesai", "ok"); }
   else if (b.dataset.ra === "del") {
     DATA.relief.splice(i, 1); refreshAll(); logAdd("warn", "Rekod relief dipadam: " + r.kelas);
+    pushSheet("delete", "Relief", "relief", sheetRow(r, ["localId","_row","kelas","tarikh","masa"]), "padam " + r.kelas);
     withUndo("Rekod relief dipadam", () => { DATA.relief.splice(i, 0, r); refreshAll(); logAdd("info", "Rekod relief dipulihkan: " + r.kelas); });
   }
 });
@@ -1827,8 +1869,8 @@ $("#reliefForm").addEventListener("submit", e => {
   const rec = { tarikh: $("#reliefDate").value, masa: $("#reliefTime").value, kelas: $("#reliefClass").value.trim(), guruTidakHadir: $("#reliefTeacher").value.trim(), guruRelief: $("#reliefSubstitute").value.trim(), status: $("#reliefStatus").value, nota: $("#reliefNote").value.trim() };
   if (!rec.kelas || !rec.guruTidakHadir || !rec.masa || !parseYMD(rec.tarikh)) { $("#reliefStatusText").textContent = "Sila lengkapkan tarikh, masa, kelas dan guru."; return; }
   if (rec.guruRelief && rec.status === "Perlu Relief") rec.status = "Sudah Ditugaskan";
-  if (reliefEdit >= 0) { Object.assign(DATA.relief[reliefEdit], rec); logAdd("ok", "Relief dikemas kini: " + rec.kelas); toast("Relief dikemas kini", "ok"); }
-  else { DATA.relief.push(rec); logAdd("ok", "Relief baharu: " + rec.kelas + " " + rec.masa); toast("Relief ditambah", "ok"); }
+  if (reliefEdit >= 0) { const cur = DATA.relief[reliefEdit]; Object.assign(cur, rec); logAdd("ok", "Relief dikemas kini: " + rec.kelas); toast("Relief dikemas kini", "ok"); pushSheet("update", "Relief", "relief", sheetRow(cur, RELIEF_KEYS), "kemas kini " + rec.kelas); }
+  else { rec.localId = newId("relief"); DATA.relief.push(rec); logAdd("ok", "Relief baharu: " + rec.kelas + " " + rec.masa); toast("Relief ditambah", "ok"); pushSheet("append", "Relief", "relief", sheetRow(rec, RELIEF_KEYS), "tambah " + rec.kelas); }
   DATA.relief.sort((a, b) => (a.tarikh + a.masa).localeCompare(b.tarikh + b.masa));
   closeModal("reliefModal"); refreshAll();
 });
@@ -1844,7 +1886,9 @@ $("#pwaForm").addEventListener("submit", e => {
   const url = $("#pwaUrl").value.trim(), nama = $("#pwaName").value.trim();
   if (!nama || !/^https?:\/\//i.test(url)) { $("#pwaStatusText").textContent = "Masukkan nama dan pautan http(s) yang sah."; return; }
   if ($("#pwaActive").value === "Tidak") { closeModal("pwaModal"); toast("Aplikasi tidak aktif tidak dipaparkan", ""); return; }
-  DATA.pwa.push({ nama, pautan: url, kategori: $("#pwaCat").value.trim() || "Umum", status: "online", urutan: +$("#pwaOrder").value || DATA.pwa.length + 1 });
+  const pw = { nama, pautan: url, kategori: $("#pwaCat").value.trim() || "Umum", status: "online", urutan: +$("#pwaOrder").value || DATA.pwa.length + 1 };
+  DATA.pwa.push(pw);
+  pushSheet("append", "PWA", "pwa", { nama: pw.nama, pautan: pw.pautan, kategori: pw.kategori, aktif: "Ya", urutan: pw.urutan }, "tambah " + nama);
   logAdd("ok", "Aplikasi PWA ditambah: " + nama); toast("Aplikasi ditambah", "ok");
   closeModal("pwaModal"); refreshAll();
 });
@@ -1957,19 +2001,79 @@ setInterval(() => {
   [head, grip].forEach(el => { el.addEventListener("pointermove", move); el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); });
 })();
 
-/* ---------- Muat data langsung (Apps Script / API) ---------- */
+/* ---------- Sambungan Google Sheet (Apps Script) ---------- */
+let NEED_KEY = false, memKey = "", syncWasOk = true;
+const getKey = () => store.get("cc-key", "") || memKey;
+const setKey = k => { memKey = k; store.set("cc-key", k); };
+function askKey(err){
+  NEED_KEY = true; $("#gate").hidden = false;
+  $("#gateErr").textContent = err || ""; $("#gateErr").hidden = !err;
+  $("#mode").textContent = "PERLU KUNCI"; $("#mode").className = "demo";
+  setTimeout(() => $("#gateKey").focus(), 50);
+}
+$("#gateForm").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const k = $("#gateKey").value.trim(); if (!k) return;
+  setKey(k); $("#gateKey").value = ""; $("#gate").hidden = true; NEED_KEY = false;
+  $("#mode").textContent = "MEMUATKAN…"; loadData();
+});
+try { const qk = new URLSearchParams(location.search).get("key"); if (qk) setKey(qk); } catch(e){}
+
 function loadData(){
   const t0 = performance.now();
-  const ok = d => { SYS.api = Math.round(performance.now() - t0); SYS.apiErr = false; applyData(typeof d === "string" ? JSON.parse(d) : d, true); };
   const fail = err => {
-    SYS.apiErr = true; logAdd("err", "Gagal muat data: " + ((err && err.message) || err));
-    toast("Gagal muat data — guna data sedia ada", "err"); if (!DATA) applyData(SAMPLE, false);
+    SYS.apiErr = true;
+    const msg = String((err && err.message) || err);
+    if (/unauthorized/i.test(msg)) { setKey(""); askKey("Kunci akses tidak sah. Sila cuba lagi."); return; }
+    if (syncWasOk) logAdd("err", "Gagal muat data: " + msg.slice(0, 120));
+    syncWasOk = false;
+    toast("Gagal muat data — guna data sedia ada", "err");
+    if (!DATA) {
+      let c = null; try { c = JSON.parse(store.get("cc-last", "null")); } catch(e){}
+      applyData(c || SAMPLE, !!c);
+      if (c) { $("#mode").textContent = "CACHE"; }
+    }
+  };
+  const ok = d => {
+    try { if (typeof d === "string") d = JSON.parse(d); } catch(e) { return fail("Respons tidak sah"); }
+    if (!d || d.error || !Array.isArray(d.tugasan)) return fail(d && d.error ? d.error : "Respons API tidak mengandungi data (semak URL /exec dan ?api=data)");
+    SYS.api = Math.round(performance.now() - t0); SYS.apiErr = false;
+    if (!syncWasOk) logAdd("ok", "Sambungan Sheet pulih · " + SYS.api + " ms");
+    syncWasOk = true; NEED_KEY = false;
+    store.set("cc-last", JSON.stringify(d));
+    applyData(d, true);
   };
   try {
-    if (GAS) google.script.run.withSuccessHandler(ok).withFailureHandler(fail).getDashboardData();
-    else fetch(API_URL, { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }).then(ok).catch(fail);
-  } catch (e) { fail(e); }
+    if (GAS) google.script.run.withSuccessHandler(ok).withFailureHandler(fail).dataDashboard(getKey());
+    else fetch(API_URL + "?api=data&key=" + encodeURIComponent(getKey()), { cache: "no-store" })
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }).then(ok).catch(fail);
+  } catch (err) { fail(err); }
 }
+
+/* Tulis ke Sheet: action = append | update | delete. Mengembalikan Promise. */
+function sheetSave(action, sheet, type, row){
+  if (!LIVE) return Promise.resolve({ local: true });
+  const payload = { action, sheet, type, key: getKey(), row };
+  if (GAS) return new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej).saveDashboard(payload));
+  const params = new URLSearchParams({ api: "save", action, sheet, type, key: getKey(), data: JSON.stringify(row) });
+  return fetch(API_URL + "?" + params.toString(), { cache: "no-store" })
+    .then(r => r.json().catch(() => ({ error: "Respons API tidak sah" })).then(j => { if (!r.ok || j.error) throw new Error(j.error || "HTTP " + r.status); return j; }));
+}
+/* Simpan lalu muat semula; jika gagal, beritahu pengguna. */
+function pushSheet(action, sheet, type, row, label){
+  if (!LIVE) return;
+  if (action !== "append" && !row._row && !row.localId) return;   // rekod bukan dari Sheet (cth. tugasan Classroom)
+  sheetSave(action, sheet, type, row).then(() => { logAdd("ok", "Sheet/" + sheet + ": " + label); loadData(); })
+    .catch(err => {
+      const m = String((err && err.message) || err);
+      if (/unauthorized/i.test(m)) { setKey(""); askKey("Kunci akses tidak sah."); return; }
+      logAdd("err", "Sheet/" + sheet + " gagal: " + m.slice(0, 120)); toast("Gagal simpan ke Sheet: " + m.slice(0, 80), "err");
+    });
+}
+const newId = p => p + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+const sheetRow = (o, keep) => { const r = {}; keep.forEach(k => { if (o[k] !== undefined && o[k] !== null) r[k] = o[k]; }); return r; };
+const TASK_KEYS = ["tajuk","pic","unit","akhir","status","kemajuan","localId","_row"];
+const RELIEF_KEYS = ["tarikh","masa","kelas","guruTidakHadir","guruRelief","status","nota","localId","_row"];
 
 /* ---------- Jam & muat awal ---------- */
 function tickClock(){
