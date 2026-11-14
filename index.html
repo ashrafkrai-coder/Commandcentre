@@ -159,7 +159,7 @@ tr.row:hover td{background:rgba(95,212,255,.035)}.tt{font-weight:600;color:var(-
 .grp{font:inherit;font-weight:600}.g-guru{color:#5fd4ff}.g-admin{color:#ffb547}.g-bot{color:#3ddc97}.g-ibubapa{color:#8f9cff}.feed .empty{color:#6c8296}.feed .sk-line{background:#12202d}
 .msg.new{animation:incoming 2.4s ease-out}@keyframes incoming{0%{background:var(--ice-soft);transform:translateX(-6px)}20%{transform:none}100%{background:transparent}}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill, minmax(150px,1fr));gap:10px;padding:14px}.tile{position:relative;display:flex;flex-direction:column;gap:3px;padding:12px;background:var(--panel2);border:1px solid var(--line);color:var(--fg);text-decoration:none;min-height:96px;transition:border-color .15s, transform .15s}
-.tile:hover{border-color:var(--ice);transform:translateY(-2px)}.ico{width:34px;height:34px;display:grid;place-items:center;font:700 13px/1 var(--f-display);letter-spacing:.04em;color:var(--bg);background:var(--ice);margin-bottom:6px}
+.ico img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:3px}.tile:hover{border-color:var(--ice);transform:translateY(-2px)}.ico{position:relative;overflow:hidden;width:34px;height:34px;display:grid;place-items:center;font:700 13px/1 var(--f-display);letter-spacing:.04em;color:var(--bg);background:var(--ice);margin-bottom:6px}
 .nm{font-weight:600;font-size:13.5px;line-height:1.25}.cat{font:400 11px/1.3 var(--f-mono);color:var(--dim)}.dot{position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:5px;font:600 9.5px/1 var(--f-mono);letter-spacing:.1em}
 .dot::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}.d-online{color:var(--ok)}.d-semak{color:var(--warn)}.d-luar{color:var(--crit)}
 .tile.add{border-style:dashed;color:var(--dim);justify-content:center;align-items:center;text-align:center;font:500 12px/1.4 var(--f-mono);cursor:default}.tile.add:hover{transform:none;border-color:var(--ice)}
@@ -1631,18 +1631,22 @@ function renderFeed(){
 $("#tgFilter").addEventListener("change", renderFeed);
 
 /* ---------- PWA ---------- */
+const initials = n => String(n || "?").replace(/^e-/i, "E ").split(/s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+const favicon = u => "https://www.google.com/s2/favicons?sz=64&domain_url=" + encodeURIComponent(u);
 function renderPwa(){
   if (!(DATA && DATA.loaded)) { $("#tiles").innerHTML = Array(4).fill('<div class="sk sk-tile"></div>').join(""); return; }
   const list = (DATA.pwa || []).sort((a,b) => (a.urutan||0) - (b.urutan||0));
   $("#pcount").textContent = `${list.length} aplikasi`;
-  $("#tiles").innerHTML = list.map(p => `
+  $("#tiles").innerHTML = list.map(p => {
+    const okUrl = /^https?:///i.test(p.pautan || "");
+    const icon = okUrl ? (p.ikon || favicon(p.pautan)) : "";   // ikon dari Sheet/pelayan; sandaran: perkhidmatan favicon
+    return `
     <a class="tile" href="${esc(p.pautan || '#')}" target="_blank" rel="noopener">
-      <div class="ico">${esc((p.nama || "?").charAt(0).toUpperCase())}</div>
+      <div class="ico">${esc(initials(p.nama))}${icon ? `<img src="${esc(icon)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</div>
       <div class="nm">${esc(p.nama)}</div>
       <div class="cat">${esc(p.kategori || "Umum")}</div>
       <div class="dot d-${p.status || 'na'}">${p.status === 'online' ? 'Online' : (p.status === 'semak' ? 'Semak' : 'Luar')}</div>
-    </a>
-  `).join("") + `<button class="tile add" id="addPwaTileBtn" type="button"><b>+</b><span>Tambah Aplikasi</span></button>`;
+    </a>`; }).join("") + `<button class="tile add" id="addPwaTileBtn" type="button"><b>+</b><span>Tambah Aplikasi</span></button>`;
   
   const addBtn = $("#addPwaTileBtn");
   if (addBtn) addBtn.addEventListener("click", openPwa);
