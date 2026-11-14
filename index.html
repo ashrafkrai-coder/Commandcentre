@@ -282,6 +282,11 @@ tr.row td{display:block;border:0 !important;padding:0;min-width:0}tr.row:hover t
 .nx-sel-hint{display:none}
 
 
+/* Panel Classroom: rendah, senarai kelas boleh ditatal */
+.cls-list{max-height:min(300px,38vh);min-height:120px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+.cls-list::-webkit-scrollbar{width:8px}.cls-list::-webkit-scrollbar-thumb{background:var(--line2)}
+.cls-list .cls{padding:9px 12px}.cls-list .cls.main{min-height:54px}
+@media (max-width:900px){.cls-list{max-height:320px}}
 /* ---------- Skrin 14 inci (laptop) & 24 inci (monitor) ---------- */
 /* Laptop 14": ~1366x768 hingga ~1600x900 — padat supaya muat lebih banyak tanpa tatal */
 @media (min-width:901px) and (max-width:1600px){
